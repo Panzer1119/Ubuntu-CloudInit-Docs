@@ -36,8 +36,13 @@ if [ -f "${CLOUD_IMAGE_PATH}" ]; then
   sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
   # Delete the cloud image if the checksums do not match
   if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
-    echo "SHA256 checksums do not match. Deleting the local cloud image '${CLOUD_IMAGE}'..."
-    rm -f "${CLOUD_IMAGE_PATH}"
+    # Check if image size is IMAGE_RESIZE, so we can skip the download
+    if [ "$(qemu-img info --output json "${CLOUD_IMAGE_PATH}" | jq -r '.["virtual-size"]')" == "${IMAGE_RESIZE}" ]; then
+      echo "The local cloud image '${CLOUD_IMAGE}' is already resized to ${IMAGE_RESIZE}."
+    else
+      echo "SHA256 checksums do not match. Deleting the local cloud image '${CLOUD_IMAGE}'..."
+      rm -f "${CLOUD_IMAGE_PATH}"
+    fi
   else
     echo "SHA256 checksums match. The local cloud image '${CLOUD_IMAGE}' is up-to-date."
   fi
