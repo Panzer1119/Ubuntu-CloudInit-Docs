@@ -31,7 +31,7 @@ if [ -f "${CLOUD_IMAGE_PATH}" ]; then
   echo "Calculating the SHA256 checksum of the local cloud image '${CLOUD_IMAGE}'..."
   sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
   # Get the SHA256 checksum of the remote cloud image
-  echo "Getting the SHA256 checksum of the remote cloud image '${CLOUD_IMAGE}'..."
+  echo "Extracting the SHA256 checksum of the remote cloud image '${CLOUD_IMAGE}'..."
   sha256sum_remote=$(echo "${sha256sums}" | grep "${CLOUD_IMAGE}" | awk '{print $1}')
   # Delete the cloud image if the checksums do not match
   if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
