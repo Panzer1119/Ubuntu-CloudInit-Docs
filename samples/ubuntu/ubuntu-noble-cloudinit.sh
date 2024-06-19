@@ -65,7 +65,7 @@ qemu-img resize "${CLOUD_IMAGE_PATH}" "${IMAGE_RESIZE}"
 if sudo qm list | grep -q "${VM_ID}"; then
   # Destroy the VM if it exists
   echo "Destroying existing VM '${VM_ID}'..."
-  sudo qm destroy ${VM_ ID}
+  sudo qm destroy ${VM_ID}
 #else
 #  echo "The VM '${VM_ID}' does not exist."
 fi
