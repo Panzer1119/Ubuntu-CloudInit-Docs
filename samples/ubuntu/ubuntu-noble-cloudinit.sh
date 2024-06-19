@@ -27,12 +27,12 @@ sha256sums=$(wget -qO- "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUN
 
 # Check if the cloud image exists locally
 if [ -f "${CLOUD_IMAGE_PATH}" ]; then
-  # Calculate the SHA256 checksum of the local cloud image
-  echo "Calculating the SHA256 checksum of the local cloud image '${CLOUD_IMAGE}'..."
-  sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
   # Get the SHA256 checksum of the remote cloud image
   echo "Extracting the SHA256 checksum of the remote cloud image '${CLOUD_IMAGE}'..."
   sha256sum_remote=$(echo "${sha256sums}" | grep "${CLOUD_IMAGE}" | awk '{print $1}')
+  # Calculate the SHA256 checksum of the local cloud image
+  echo "Calculating the SHA256 checksum of the local cloud image '${CLOUD_IMAGE}'..."
+  sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
   # Delete the cloud image if the checksums do not match
   if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
     echo "SHA256 checksums do not match. Deleting the local cloud image '${CLOUD_IMAGE}'..."
