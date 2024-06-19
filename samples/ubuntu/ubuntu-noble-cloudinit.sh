@@ -27,21 +27,21 @@ sha256sums=$(wget -qO- "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUN
 
 # Check if the cloud image exists locally
 if [ -f "${CLOUD_IMAGE_PATH}" ]; then
-    # Calculate the SHA256 checksum of the local cloud image
-    sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
-    # Get the SHA256 checksum of the remote cloud image
-    sha256sum_remote=$(echo "${sha256sums}" | grep "${CLOUD_IMAGE}" | awk '{print $1}')
-    # Delete the cloud image if the checksums do not match
-    if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
-        echo "SHA256 checksums do not match. Deleting the local cloud image ${CLOUD_IMAGE}..."
-        rm -f "${CLOUD_IMAGE_PATH}"
+  # Calculate the SHA256 checksum of the local cloud image
+  sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
+  # Get the SHA256 checksum of the remote cloud image
+  sha256sum_remote=$(echo "${sha256sums}" | grep "${CLOUD_IMAGE}" | awk '{print $1}')
+  # Delete the cloud image if the checksums do not match
+  if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
+    echo "SHA256 checksums do not match. Deleting the local cloud image ${CLOUD_IMAGE}..."
+    rm -f "${CLOUD_IMAGE_PATH}"
   fi
 fi
 
 # Download the cloud image if not found locally
 if [ ! -f "${CLOUD_IMAGE_PATH}" ]; then
-    echo "Downloading the Ubuntu Noble cloud image ${CLOUD_IMAGE}..."
-    wget -qO "${CLOUD_IMAGE_PATH}" "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUNTU_VERSION}/${CLOUD_IMAGE}"
+  echo "Downloading the Ubuntu Noble cloud image ${CLOUD_IMAGE}..."
+  wget -qO "${CLOUD_IMAGE_PATH}" "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUNTU_VERSION}/${CLOUD_IMAGE}"
 fi
 
 # Resize the cloud image
@@ -52,12 +52,12 @@ sudo qm destroy "${VM_ID}"
 
 # Create the VM
 sudo qm create "${VM_ID}" --name "ubuntu-noble-template" --ostype "l26" \
-    --memory "1024" --balloon "0" \
-    --agent "1" \
-    --bios "ovmf" --machine "q35" --efidisk0 "${STORAGE_VM}:0,pre-enrolled-keys=0" \
-    --cpu "host" --cores "1" --numa "1" \
-    --vga "serial0" --serial0 "socket" \
-    --net0 "virtio,bridge=vmbr0,mtu=1"
+  --memory "1024" --balloon "0" \
+  --agent "1" \
+  --bios "ovmf" --machine "q35" --efidisk0 "${STORAGE_VM}:0,pre-enrolled-keys=0" \
+  --cpu "host" --cores "1" --numa "1" \
+  --vga "serial0" --serial0 "socket" \
+  --net0 "virtio,bridge=vmbr0,mtu=1"
 
 # Import the cloud image
 sudo qm importdisk "${VM_ID}" "${CLOUD_IMAGE}" "${STORAGE_VM}"
