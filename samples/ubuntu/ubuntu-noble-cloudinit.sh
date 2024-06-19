@@ -40,6 +40,8 @@ if [ -f "${CLOUD_IMAGE_PATH}" ]; then
   else
     echo "SHA256 checksums match. The local cloud image '${CLOUD_IMAGE}' is up-to-date."
   fi
+else
+  echo "The local cloud image '${CLOUD_IMAGE}' does not exist."
 fi
 
 # Download the cloud image if not found locally
