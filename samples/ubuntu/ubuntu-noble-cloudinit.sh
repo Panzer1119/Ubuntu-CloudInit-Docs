@@ -82,7 +82,7 @@ sudo qm create "${VM_ID}" --name "ubuntu-noble-template" --ostype "l26" \
 
 # Import the cloud image
 echo "Importing the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' storage '${STORAGE_VM}'..."
-sudo qm importdisk "${VM_ID}" "${CLOUD_IMAGE}" "${STORAGE_VM}"
+sudo qm importdisk "${VM_ID}" "${CLOUD_IMAGE_PATH}" "${STORAGE_VM}"
 
 # Attach the cloud image
 echo "Attaching the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' as disk 1..."
