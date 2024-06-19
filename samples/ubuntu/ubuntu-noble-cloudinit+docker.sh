@@ -72,7 +72,7 @@ fi
 
 # Create the VM
 echo "Creating VM '${VM_ID}'..."
-sudo qm create "${VM_ID}" --name "ubuntu-${UBUNTU_RELEASE}-template-vm" --ostype "l26" \
+sudo qm create "${VM_ID}" --name "ubuntu-${UBUNTU_RELEASE}-docker-template-vm" --ostype "l26" \
   --memory "1024" --balloon "0" \
   --agent "1" \
   --bios "ovmf" --machine "q35" --efidisk0 "${STORAGE_VM}:0,pre-enrolled-keys=0" \
