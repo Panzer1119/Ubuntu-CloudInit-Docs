@@ -101,9 +101,13 @@ echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu.yaml'..."
 cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu.yaml"
 #cloud-config
 runcmd:
+    # Update apt-get
     - apt-get update
+    # Install qemu-guest-agent and magic-wormhole
     - apt-get install -y qemu-guest-agent magic-wormhole
+    # Enable the ssh service
     - systemctl enable ssh
+    # Reboot the VM
     - reboot
 # Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
 EOF
