@@ -19,7 +19,7 @@ export CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
 export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 
 # Unofficial strict mode
-set -x
+#set -x
 
 # Get the SHA256SUMS for ubuntu noble cloud images
 echo "Getting SHA256SUMS for Ubuntu ${UBUNTU_RELEASE} ${UBUNTU_VERSION} cloud images..."
