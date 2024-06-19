@@ -17,6 +17,7 @@ export UBUNTU_VERSION="current"
 export ARCH="amd64"
 export CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
 export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
+export IMAGE_RESIZE="8G"
 
 # Unofficial strict mode
 #set -x
@@ -51,12 +52,20 @@ if [ ! -f "${CLOUD_IMAGE_PATH}" ]; then
 fi
 
 # Resize the cloud image
-qemu-img resize "${CLOUD_IMAGE_PATH}" "8G"
+echo "Resizing the cloud image '${CLOUD_IMAGE}' to ${IMAGE_RESIZE}..."
+qemu-img resize "${CLOUD_IMAGE_PATH}" "${IMAGE_RESIZE}"
 
-# Destroy the VM if it exists
-sudo qm destroy "${VM_ID}"
+# Check if the VM exists with qm and delete if so
+if sudo qm list | grep -q "${VM_ID}"; then
+  # Destroy the VM if it exists
+  echo "Destroying existing VM '${VM_ID}'..."
+  sudo qm destroy "${VM_ID}"
+#else
+#  echo "The VM '${VM_ID}' does not exist."
+fi
 
 # Create the VM
+echo "Creating VM '${VM_ID}'..."
 sudo qm create "${VM_ID}" --name "ubuntu-noble-template" --ostype "l26" \
   --memory "1024" --balloon "0" \
   --agent "1" \
@@ -66,18 +75,23 @@ sudo qm create "${VM_ID}" --name "ubuntu-noble-template" --ostype "l26" \
   --net0 "virtio,bridge=vmbr0,mtu=1"
 
 # Import the cloud image
+echo "Importing the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' storage '${STORAGE_VM}'..."
 sudo qm importdisk "${VM_ID}" "${CLOUD_IMAGE}" "${STORAGE_VM}"
 
 # Attach the cloud image
+echo "Attaching the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' as disk 1..."
 sudo qm set "${VM_ID}" --scsihw "virtio-scsi-pci" --virtio0 "${STORAGE_VM}:vm-${VM_ID}-disk-1,discard=on"
 
 # Set the boot order
+echo "Setting the boot order for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --boot "order=virtio0"
 
 # Set the cloud-init drive
+echo "Setting the cloud-init drive for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
 # Set the cloud-init configuration
+echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu.yaml'..."
 cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu.yaml"
 #cloud-config
 runcmd:
@@ -89,6 +103,7 @@ runcmd:
 EOF
 
 # Set the VM options
+echo "Setting the VM options for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --cicustom "vendor=${STORAGE}:snippets/ubuntu.yaml"
 sudo qm set "${VM_ID}" --tags "ubuntu-template,noble,cloudinit"
 sudo qm set "${VM_ID}" --ciuser "${USER}"
