@@ -35,6 +35,8 @@ if [ -f "${CLOUD_IMAGE_PATH}" ]; then
   if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
     echo "SHA256 checksums do not match. Deleting the local cloud image ${CLOUD_IMAGE}..."
     rm -f "${CLOUD_IMAGE_PATH}"
+  else
+    echo "SHA256 checksums match. The local cloud image ${CLOUD_IMAGE} is up-to-date."
   fi
 fi
 
