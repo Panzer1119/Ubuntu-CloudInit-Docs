@@ -3,13 +3,13 @@
 # Usage: ./ubuntu-noble-cloudinit.sh [VM_ID] [USER] [STORAGE_VM] [SSH_KEYS] [STORAGE] [IMAGE_DIR] [SNIPPETS_DIR]
 
 # Input variables
-export VM_ID="${0:-5000}"
-export USER="${1:-panzer1119}"
-export STORAGE_VM="${2:-storage-vm}"
-export SSH_KEYS="${3:-/home/${USER}/.ssh/authorized_keys}"
-export STORAGE="${4:-tn-core-1}"
-export IMAGE_DIR="${5:-/mnt/pve/${STORAGE}/images}"
-export SNIPPETS_DIR="${6:-/mnt/pve/${STORAGE}/snippets}"
+export VM_ID="${1:-5000}"
+export USER="${2:-panzer1119}"
+export STORAGE_VM="${3:-storage-vm}"
+export SSH_KEYS="${4:-/home/${USER}/.ssh/authorized_keys}"
+export STORAGE="${5:-tn-core-1}"
+export IMAGE_DIR="${6:-/mnt/pve/${STORAGE}/images}"
+export SNIPPETS_DIR="${7:-/mnt/pve/${STORAGE}/snippets}"
 
 # Constants
 export UBUNTU_RELEASE="noble"
