@@ -113,10 +113,12 @@ package_update: true
 package_upgrade: false
 package_reboot_if_required: true
 
-apt_sources:
-  - source: "deb [arch=${ARCH} signed-by=\${KEY_FILE}] https://download.docker.com/linux/ubuntu ${UBUNTU_RELEASE} stable"
-    keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
-    filename: docker.list
+apt:
+  sources:
+    docker.list:
+      source: "deb [arch=${ARCH} signed-by=\${KEY_FILE}] https://download.docker.com/linux/ubuntu ${UBUNTU_RELEASE} stable"
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      filename: docker.list
 
 packages:
   - qemu-guest-agent
