@@ -110,7 +110,7 @@ users:
   - groups: docker
 
 package_update: true
-package_upgrade: false
+package_upgrade: true
 package_reboot_if_required: true
 
 apt:
@@ -135,7 +135,8 @@ runcmd:
   # Enable the ssh service
   - systemctl enable ssh
   # Reboot the VM
-#  - reboot
+  - reboot
+
 # Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
 EOF
 
