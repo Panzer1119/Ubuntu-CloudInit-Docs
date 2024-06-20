@@ -101,29 +101,38 @@ sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
 cat <<EOF  | sudo tee "${SNIPPETS_DIR}/${SNIPPET}"
 #cloud-config
+groups:
+  - docker
+
+users:
+  - name: ${USER}
+  - groups: docker
+
+package_update: true
+package_upgrade: false
+package_reboot_if_required: true
+
+apt_sources:
+  - source: "deb [arch=${ARCH} signed-by=\${KEY_FILE}] https://download.docker.com/linux/ubuntu ${UBUNTU_RELEASE} stable"
+    keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    filename: docker.list
+
+packages:
+  - qemu-guest-agent
+  - magic-wormhole
+  - ca-certificates
+  - curl
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
 runcmd:
-    # Update apt-get
-    - apt-get update
-    # Install qemu-guest-agent and magic-wormhole
-    - apt-get install -y qemu-guest-agent magic-wormhole
-    # Install ca-certificates and curl
-    - apt-get install ca-certificates curl
-    # Install keyrings
-    - install -m 0755 -d /etc/apt/keyrings
-    # Add Docker's official GPG key
-    - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    # Chmod the Docker's official GPG key
-    - chmod a+r /etc/apt/keyrings/docker.asc
-    # Add the repository to Apt sources
-    - echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \$(. /etc/os-release && echo "\${VERSION_CODENAME}") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    # Update apt-get
-    - apt-get update
-    # Install Docker
-    - apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    # Enable the ssh service
-    - systemctl enable ssh
-    # Reboot the VM
-    - reboot
+  # Enable the ssh service
+  - systemctl enable ssh
+  # Reboot the VM
+#  - reboot
 # Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
 EOF
 
