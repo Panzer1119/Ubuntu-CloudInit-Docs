@@ -146,6 +146,7 @@ EOF
 
 #TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
 #TODO Setup portainer agent
+#TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
 #TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
 
 # Set the VM options

@@ -145,6 +145,7 @@ EOF
 
 #TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
 #TODO Setup portainer agent
+#TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
