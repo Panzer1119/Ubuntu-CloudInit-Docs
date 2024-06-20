@@ -105,6 +105,7 @@ cat <<EOF  | sudo tee "${SNIPPETS_DIR}/${SNIPPET}"
 groups:
   - docker
 
+# Most of these configuration options will not be honored if the user already exists
 users:
   - name: ${USER}
   - groups: docker
@@ -132,6 +133,8 @@ packages:
   - docker-compose-plugin
 
 runcmd:
+  # Add user to group docker
+  - usermod -aG docker ${USER}
   # Enable the ssh service
   - systemctl enable ssh
   # Reboot the VM
