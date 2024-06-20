@@ -129,7 +129,7 @@ EOF
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --cicustom "vendor=${STORAGE}:snippets/ubuntu.yaml"
-sudo qm set "${VM_ID}" --tags "ubuntu-template,noble,cloudinit"
+sudo qm set "${VM_ID}" --tags "ubuntu-template,noble,cloudinit,docker"
 sudo qm set "${VM_ID}" --ciuser "${USER}"
 sudo qm set "${VM_ID}" --cipassword "password"
 sudo qm set "${VM_ID}" --sshkeys "${SSH_KEYS}"
