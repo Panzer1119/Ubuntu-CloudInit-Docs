@@ -97,7 +97,7 @@ echo "Setting the cloud-init drive for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
 # Set the cloud-init configuration
-echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu.yaml'..."
+echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu+docker.yaml'..."
 cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu+docker.yaml"
 #cloud-config
 runcmd:
