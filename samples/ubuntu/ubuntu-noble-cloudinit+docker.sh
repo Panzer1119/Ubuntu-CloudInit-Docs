@@ -98,7 +98,7 @@ sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
 # Set the cloud-init configuration
 echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu.yaml'..."
-cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu.yaml"
+cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu+docker.yaml"
 #cloud-config
 runcmd:
     # Update apt-get
@@ -114,7 +114,7 @@ runcmd:
     # Chmod the Docker's official GPG key
     - chmod a+r /etc/apt/keyrings/docker.asc
     # Add the repository to Apt sources
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     # Update apt-get
     - apt-get update
     # Install Docker
