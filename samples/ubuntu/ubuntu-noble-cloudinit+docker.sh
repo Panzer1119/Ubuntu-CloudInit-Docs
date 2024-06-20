@@ -143,7 +143,8 @@ runcmd:
 # Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
 EOF
 
-# TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
+#TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
+#TODO Setup portainer agent
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
