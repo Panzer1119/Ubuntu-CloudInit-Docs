@@ -18,6 +18,7 @@ export ARCH="amd64"
 export CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
 export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 export IMAGE_RESIZE="8G"
+export SNIPPET="ubuntu.yaml"
 
 # Unofficial strict mode
 #set -x
@@ -97,8 +98,8 @@ echo "Setting the cloud-init drive for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
 # Set the cloud-init configuration
-echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/ubuntu.yaml'..."
-cat <<EOF  | sudo tee "${SNIPPETS_DIR}/ubuntu.yaml"
+echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
+cat <<EOF  | sudo tee "${SNIPPETS_DIR}/${SNIPPET}"
 #cloud-config
 runcmd:
     # Update apt-get
@@ -114,7 +115,7 @@ EOF
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
-sudo qm set "${VM_ID}" --cicustom "vendor=${STORAGE}:snippets/ubuntu.yaml"
+sudo qm set "${VM_ID}" --cicustom "vendor=${STORAGE}:snippets/${SNIPPET}"
 sudo qm set "${VM_ID}" --tags "ubuntu-template,noble,cloudinit"
 sudo qm set "${VM_ID}" --ciuser "${USER}"
 sudo qm set "${VM_ID}" --cipassword "password"
