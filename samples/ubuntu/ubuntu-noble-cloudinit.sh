@@ -101,15 +101,20 @@ sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
 cat <<EOF  | sudo tee "${SNIPPETS_DIR}/${SNIPPET}"
 #cloud-config
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+packages:
+  - qemu-guest-agent
+  - magic-wormhole
+
 runcmd:
-    # Update apt-get
-    - apt-get update
-    # Install qemu-guest-agent and magic-wormhole
-    - apt-get install -y qemu-guest-agent magic-wormhole
-    # Enable the ssh service
-    - systemctl enable ssh
-    # Reboot the VM
-    - reboot
+  # Enable the ssh service
+  - systemctl enable ssh
+  # Reboot the VM
+  - reboot
+
 # Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
 EOF
 
