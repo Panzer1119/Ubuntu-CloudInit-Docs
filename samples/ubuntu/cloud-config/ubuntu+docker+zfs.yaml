@@ -30,6 +30,29 @@ packages:
   - docker-buildx-plugin
   - docker-compose-plugin
 
+#TODO Set up docker to use zfs storage driver
+#  Create the zfs pool named "docker" mounted at /var/lib/docker with the following command:
+#
+#  sudo zpool create -f docker -m /var/lib/docker /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0
+#
+#  Edit /etc/docker/daemon.json and set the storage-driver to zfs.
+#  If the file was empty before, it should now look like this:
+#  {
+#    "storage-driver": "zfs"
+#  }
+#
+#  Maybe limit a container's writable storage quota
+#
+#  If you want to implement a quota on a per-image/dataset basis,
+#  you can set the size storage option to limit the amount of space
+#  a single container can use for its writable layer.
+#
+#  Edit /etc/docker/daemon.json and add the following:
+#  {
+#    "storage-driver": "zfs",
+#    "storage-opts": ["size=256M"]
+#  }
+
 runcmd:
   # Add user to group docker
   - usermod -aG docker {{USER}}
