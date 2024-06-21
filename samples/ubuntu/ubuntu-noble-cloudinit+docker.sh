@@ -19,6 +19,7 @@ export CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
 export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 export IMAGE_RESIZE="8G"
 export SNIPPET="ubuntu+docker.yaml"
+export SNIPPET_SRC_PATH="./cloud-config/${SNIPPET}"
 
 # Unofficial strict mode
 #set -x
@@ -99,49 +100,14 @@ echo "Setting the cloud-init drive for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
 # Set the cloud-init configuration
-echo "Generating the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
-cat <<EOF  | sudo tee "${SNIPPETS_DIR}/${SNIPPET}"
-#cloud-config
-groups:
-  - docker
+echo "Copying the cloud-init configuration '${SNIPPET_SRC_PATH}' to '${SNIPPETS_DIR}/${SNIPPET}'..."
+sudo cp "${SNIPPET_SRC_PATH}" "${SNIPPETS_DIR}/${SNIPPET}"
 
-# Most of these configuration options will not be honored if the user already exists
-users:
-  - name: ${USER}
-  - groups: docker
-
-package_update: true
-package_upgrade: true
-package_reboot_if_required: true
-
-apt:
-  sources:
-    docker.list:
-      source: "deb [arch=${ARCH} signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu ${UBUNTU_RELEASE} stable"
-      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
-      filename: docker.list
-
-packages:
-  - qemu-guest-agent
-  - magic-wormhole
-  - ca-certificates
-  - curl
-  - docker-ce
-  - docker-ce-cli
-  - containerd.io
-  - docker-buildx-plugin
-  - docker-compose-plugin
-
-runcmd:
-  # Add user to group docker
-  - usermod -aG docker ${USER}
-  # Enable the ssh service
-  - systemctl enable ssh
-  # Reboot the VM
-  - reboot
-
-# Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
-EOF
+# Replace variables in the cloud-init configuration
+echo "Replacing variables in the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
+sudo sed -i "s|{{USER}}|${USER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
+sudo sed -i "s|{{ARCH}}|${ARCH}|g" "${SNIPPETS_DIR}/${SNIPPET}"
+sudo sed -i "s|{{UBUNTU_RELEASE}}|${UBUNTU_RELEASE}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 
 #TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
 #TODO Setup portainer agent
