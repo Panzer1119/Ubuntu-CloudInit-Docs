@@ -1,0 +1,41 @@
+#cloud-config
+groups:
+  - docker
+
+# Most of these configuration options will not be honored if the user already exists
+users:
+  - name: {{USER}}
+  - groups: docker
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+apt:
+  sources:
+    docker.list:
+      source: "deb [arch={{ARCH}} signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu {{UBUNTU_RELEASE}} stable"
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      filename: docker.list
+
+packages:
+  - qemu-guest-agent
+  - magic-wormhole
+  - zfsutils-linux
+  - ca-certificates
+  - curl
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+runcmd:
+  # Add user to group docker
+  - usermod -aG docker {{USER}}
+  # Enable the ssh service
+  - systemctl enable ssh
+  # Reboot the VM
+  - reboot
+
+# Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
