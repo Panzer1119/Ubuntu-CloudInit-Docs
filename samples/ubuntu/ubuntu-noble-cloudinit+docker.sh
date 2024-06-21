@@ -41,6 +41,7 @@ if [ -f "${CLOUD_IMAGE_PATH}" ]; then
     # Check if image size is IMAGE_RESIZE, so we can skip the download (convert IMAGE_RESIZE to bytes)
     image_resize_bytes=$(echo "${IMAGE_RESIZE}" | numfmt --from=iec)
     echo "SHA256 checksums do not match."
+    #FIXME If the current noble image is updated to a new version, the checksum will not match, but will never be pulled again because of this
     if [ "$(qemu-img info --output json "${CLOUD_IMAGE_PATH}" | jq -r '.["virtual-size"]')" == "${image_resize_bytes}" ]; then
       echo "The local cloud image '${CLOUD_IMAGE}' is already resized to ${IMAGE_RESIZE}."
     else
