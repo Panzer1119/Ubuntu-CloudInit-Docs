@@ -100,9 +100,9 @@ sudo qm set "${VM_ID}" --boot "order=virtio0"
 echo "Setting the cloud-init drive for VM '${VM_ID}'..."
 sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
 
-# Set the cloud-init configuration
+# Copy the cloud-init configuration to the snippets directory (overwrite if exists)
 echo "Copying the cloud-init configuration '${SNIPPET_SRC_PATH}' to '${SNIPPETS_DIR}/${SNIPPET}'..."
-sudo cp "${SNIPPET_SRC_PATH}" "${SNIPPETS_DIR}/${SNIPPET}"
+sudo cp -f "${SNIPPET_SRC_PATH}" "${SNIPPETS_DIR}/${SNIPPET}"
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
