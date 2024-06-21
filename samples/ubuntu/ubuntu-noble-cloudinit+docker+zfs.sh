@@ -20,6 +20,7 @@ export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 export IMAGE_RESIZE="8G"
 export SNIPPET="ubuntu+docker+zfs.yaml"
 export SNIPPET_SRC_PATH="./cloud-config/${SNIPPET}"
+export DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 
 # Unofficial strict mode
 #set -x
@@ -108,6 +109,7 @@ echo "Replacing variables in the cloud-init configuration '${SNIPPETS_DIR}/${SNI
 sudo sed -i "s|{{USER}}|${USER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{ARCH}}|${ARCH}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{UBUNTU_RELEASE}}|${UBUNTU_RELEASE}|g" "${SNIPPETS_DIR}/${SNIPPET}"
+sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${DISK_ZPOOL_DOCKER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 
 #TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
 #TODO Setup portainer agent

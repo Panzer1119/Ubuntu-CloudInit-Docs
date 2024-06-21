@@ -29,31 +29,25 @@ packages:
   - containerd.io
   - docker-buildx-plugin
   - docker-compose-plugin
-
-#TODO Set up docker to use zfs storage driver
-#  Create the zfs pool named "docker" mounted at /var/lib/docker with the following command:
-#
-#  sudo zpool create -f docker -m /var/lib/docker /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0
-#
-#  Edit /etc/docker/daemon.json and set the storage-driver to zfs.
-#  If the file was empty before, it should now look like this:
-#  {
-#    "storage-driver": "zfs"
-#  }
-#
-#  Maybe limit a container's writable storage quota
-#
-#  If you want to implement a quota on a per-image/dataset basis,
-#  you can set the size storage option to limit the amount of space
-#  a single container can use for its writable layer.
-#
-#  Edit /etc/docker/daemon.json and add the following:
-#  {
-#    "storage-driver": "zfs",
-#    "storage-opts": ["size=256M"]
-#  }
+  - jq
 
 runcmd:
+  # Stop the docker service
+  - systemctl stop docker
+  # Copy the contents of /var/lib/docker/ to /var/lib/docker.bk
+  - cp -au /var/lib/docker /var/lib/docker.bk
+  # Remove the contents of /var/lib/docker/
+  - rm -rf /var/lib/docker/*
+  # Create the zfs pool named "docker" mounted at /var/lib/docker
+  - zpool create -f docker -m /var/lib/docker {{DISK_ZPOOL_DOCKER}}
+  # If /etc/docker/daemon.json does not exist write { "storage-driver": "zfs", "storage-opts": [] } to it using jq
+  - "test -f /etc/docker/daemon.json || echo '{ \"storage-driver\": \"zfs\", \"storage-opts\": [] }' | jq > /etc/docker/daemon.json"
+  # Set "storage-driver" to "zfs" in /etc/docker/daemon.json and "storage-opts" to [] using jq and a temporary file
+  - "jq '. + { \"storage-driver\": \"zfs\", \"storage-opts\": [] }' /etc/docker/daemon.json > /tmp/daemon.json && mv /tmp/daemon.json /etc/docker/daemon.json"
+  # Start the docker service
+  - systemctl start docker
+  # Confirm docker is using the zfs storage driver, if not fail the build
+  - docker info --format '{{.Driver}}' | grep -q zfs || exit 1
   # Add user to group docker
   - usermod -aG docker {{USER}}
   # Enable the ssh service
