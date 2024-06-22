@@ -1,15 +1,4 @@
-#! /bin/bash
-
-# Default values
-DEFAULT_VM_ID="5002"
-DEFAULT_USER="panzer1119"
-DEFAULT_STORAGE_VM="storage-vm"
-DEFAULT_SSH_KEYS="/home/${DEFAULT_USER}/.ssh/authorized_keys"
-DEFAULT_STORAGE="tn-core-1"
-DEFAULT_IMAGE_DIR="/mnt/pve/${DEFAULT_STORAGE}/images"
-DEFAULT_SNIPPETS_DIR="/mnt/pve/${DEFAULT_STORAGE}/snippets"
-DEFAULT_SNIPPET="docker+zfs.yaml"
-DEFAULT_DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
+#!/bin/bash
 
 # Function to print usage information
 usage() {
@@ -17,101 +6,119 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  -v, --vm-id VM_ID             VM ID (default: ${DEFAULT_VM_ID})
-  -u, --user USER               User name (default: ${DEFAULT_USER})
-  -s, --storage-vm STORAGE_VM   Storage VM name (default: ${DEFAULT_STORAGE_VM})
-  -k, --ssh-keys SSH_KEYS       SSH keys path (default: ${DEFAULT_SSH_KEYS})
-  -t, --storage STORAGE         Storage name (default: ${DEFAULT_STORAGE})
-  -i, --image-dir IMAGE_DIR     Image directory path (default: ${DEFAULT_IMAGE_DIR})
-  -n, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: ${DEFAULT_SNIPPETS_DIR})
-  -c, --snippet SNIPPET         Cloud-init snippet file (default: ${DEFAULT_SNIPPET})
-  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: ${DEFAULT_DISK_ZPOOL_DOCKER})
+  -v, --vm-id VM_ID             VM ID (default: 5002)
+  -u, --user USER               User name (default: panzer1119)
+  -s, --storage-vm STORAGE_VM   Storage VM name (default: storage-vm)
+  -k, --ssh-keys SSH_KEYS       SSH keys path (default: /home/\${USER}/.ssh/authorized_keys)
+  -t, --storage STORAGE         Storage name (default: tn-core-1)
+  -i, --image-dir IMAGE_DIR     Image directory path (default: /mnt/pve/\${STORAGE}/images)
+  -n, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: /mnt/pve/\${STORAGE}/snippets)
+  -c, --snippet SNIPPET         Cloud-init snippet file (default: docker+zfs.yaml)
+  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)
   -h, --help                    Display this help and exit
 EOF
 }
 
-# Parse command-line options
-while getopts ":v:u:s:k:t:i:n:c:d:h" opt; do
-  case ${opt} in
-    v) VM_ID="${OPTARG}" ;;
-    u) USER="${OPTARG}" ;;
-    s) STORAGE_VM="${OPTARG}" ;;
-    k) SSH_KEYS="${OPTARG}" ;;
-    t) STORAGE="${OPTARG}" ;;
-    i) IMAGE_DIR="${OPTARG}" ;;
-    n) SNIPPETS_DIR="${OPTARG}" ;;
-    c) SNIPPET="${OPTARG}" ;;
-    d) DISK_ZPOOL_DOCKER="${OPTARG}" ;;
-    h) usage; exit 0 ;;
-    \?) echo "Invalid option: -${OPTARG}. Use -h for help." >&2; exit 1 ;;
-    :) echo "Option -${OPTARG} requires an argument. Use -h for help." >&2; exit 1 ;;
-  esac
-done
+# Main function
+main() {
+    # Default values
+    local vm_id="5002"
+    local user="panzer1119"
+    local storage_vm="storage-vm"
+    local ssh_keys="/home/${user}/.ssh/authorized_keys"
+    local storage="tn-core-1"
+    local image_dir="/mnt/pve/${storage}/images"
+    local snippets_dir="/mnt/pve/${storage}/snippets"
+    local snippet="docker+zfs.yaml"
+    local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 
-shift $((OPTIND -1))
+    # Parse command-line options
+    while getopts ":v:u:s:k:t:i:n:c:d:h" opt; do
+      case ${opt} in
+        v) vm_id="${OPTARG}" ;;
+        u) user="${OPTARG}" ;;
+        s) storage_vm="${OPTARG}" ;;
+        k) ssh_keys="${OPTARG}" ;;
+        t) storage="${OPTARG}" ;;
+        i) image_dir="${OPTARG}" ;;
+        n) snippets_dir="${OPTARG}" ;;
+        c) snippet="${OPTARG}" ;;
+        d) disk_zpool_docker="${OPTARG}" ;;
+        h) usage; exit 0 ;;
+        \?) echo "Invalid option: -${OPTARG}. Use -h for help." >&2; exit 1 ;;
+        :) echo "Option -${OPTARG} requires an argument. Use -h for help." >&2; exit 1 ;;
+      esac
+    done
 
-# Check if the cloud image exists locally
-CLOUD_IMAGE="noble-server-cloudimg-amd64.img"
-CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
+    shift $((OPTIND -1))
 
-if [ ! -f "${CLOUD_IMAGE_PATH}" ]; then
-  echo "Error: Cloud image '${CLOUD_IMAGE}' not found at '${CLOUD_IMAGE_PATH}'. Exiting."
-  exit 1
-fi
+    # Check if the cloud image exists locally
+    local cloud_image="noble-server-cloudimg-amd64.img"
+    local cloud_image_path="${image_dir}/${cloud_image}"
 
-# Check if the VM exists with qm and delete if so
-if sudo qm list | grep -q "${VM_ID}"; then
-  # Destroy the VM if it exists
-  echo "Destroying existing VM '${VM_ID}'..."
-  sudo qm destroy "${VM_ID}"
-fi
+    if [ ! -f "${cloud_image_path}" ]; then
+      echo "Error: Cloud image '${cloud_image}' not found at '${cloud_image_path}'. Exiting."
+      exit 1
+    fi
 
-# Create the VM
-echo "Creating VM '${VM_ID}'..."
-sudo qm create "${VM_ID}" --name "ubuntu-docker-zfs-template-vm" --ostype "l26" \
-  --memory "1024" --balloon "0" \
-  --agent "1" \
-  --bios "ovmf" --machine "q35" --efidisk0 "${STORAGE_VM}:0,pre-enrolled-keys=0" \
-  --cpu "host" --cores "1" --numa "1" \
-  --vga "serial0" --serial0 "socket" \
-  --net0 "virtio,bridge=vmbr0,mtu=1"
+    # Check if the VM exists with qm and delete if so
+    if sudo qm list | grep -q "${vm_id}"; then
+      # Destroy the VM if it exists
+      echo "Destroying existing VM '${vm_id}'..."
+      sudo qm destroy "${vm_id}"
+    fi
 
-# Import the cloud image
-echo "Importing the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' storage '${STORAGE_VM}'..."
-sudo qm importdisk "${VM_ID}" "${CLOUD_IMAGE_PATH}" "${STORAGE_VM}"
+    # Create the VM
+    echo "Creating VM '${vm_id}'..."
+    sudo qm create "${vm_id}" --name "ubuntu-docker-zfs-template-vm" --ostype "l26" \
+      --memory "1024" --balloon "0" \
+      --agent "1" \
+      --bios "ovmf" --machine "q35" --efidisk0 "${storage_vm}:0,pre-enrolled-keys=0" \
+      --cpu "host" --cores "1" --numa "1" \
+      --vga "serial0" --serial0 "socket" \
+      --net0 "virtio,bridge=vmbr0,mtu=1"
 
-# Attach the cloud image
-echo "Attaching the cloud image '${CLOUD_IMAGE}' to VM '${VM_ID}' as disk 1..."
-sudo qm set "${VM_ID}" --scsihw "virtio-scsi-pci" --virtio0 "${STORAGE_VM}:vm-${VM_ID}-disk-1,discard=on"
+    # Import the cloud image
+    echo "Importing the cloud image '${cloud_image}' to VM '${vm_id}' storage '${storage_vm}'..."
+    sudo qm importdisk "${vm_id}" "${cloud_image_path}" "${storage_vm}"
 
-# Set the boot order
-echo "Setting the boot order for VM '${VM_ID}'..."
-sudo qm set "${VM_ID}" --boot "order=virtio0"
+    # Attach the cloud image
+    echo "Attaching the cloud image '${cloud_image}' to VM '${vm_id}' as disk 1..."
+    sudo qm set "${vm_id}" --scsihw "virtio-scsi-pci" --virtio0 "${storage_vm}:vm-${vm_id}-disk-1,discard=on"
 
-# Set the cloud-init drive
-echo "Setting the cloud-init drive for VM '${VM_ID}'..."
-sudo qm set "${VM_ID}" --ide2 "${STORAGE_VM}:cloudinit"
+    # Set the boot order
+    echo "Setting the boot order for VM '${vm_id}'..."
+    sudo qm set "${vm_id}" --boot "order=virtio0"
 
-# Copy the cloud-init configuration to the snippets directory (overwrite if exists)
-echo "Copying the cloud-init configuration '${SNIPPET_SRC_PATH}' to '${SNIPPETS_DIR}/${SNIPPET}'..."
-sudo cp -f "${SNIPPET_SRC_PATH}" "${SNIPPETS_DIR}/${SNIPPET}"
+    # Set the cloud-init drive
+    echo "Setting the cloud-init drive for VM '${vm_id}'..."
+    sudo qm set "${vm_id}" --ide2 "${storage_vm}:cloudinit"
 
-# Replace variables in the cloud-init configuration
-echo "Replacing variables in the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
-sudo sed -i "s|{{USER}}|${USER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
-sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${DISK_ZPOOL_DOCKER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
+    # Copy the cloud-init configuration to the snippets directory (overwrite if exists)
+    local snippet_src_path="./cloud-config/${snippet}"
+    echo "Copying the cloud-init configuration '${snippet_src_path}' to '${snippets_dir}/${snippet}'..."
+    sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
 
-# TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
-# TODO Setup portainer agent
-# TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
-# TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
+    # Replace variables in the cloud-init configuration
+    echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
+    sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${disk_zpool_docker}|g" "${snippets_dir}/${snippet}"
 
-# Set the VM options
-echo "Setting the VM options for VM '${VM_ID}'..."
-sudo qm set "${VM_ID}" --cicustom "vendor=${STORAGE}:snippets/${SNIPPET}"
-sudo qm set "${VM_ID}" --tags "ubuntu-template,noble,cloudinit,docker,zfs"
-sudo qm set "${VM_ID}" --ciuser "${USER}"
-sudo qm set "${VM_ID}" --cipassword "password"
-sudo qm set "${VM_ID}" --sshkeys "${SSH_KEYS}"
-sudo qm set "${VM_ID}" --ipconfig0 "ip=dhcp"
-sudo qm template "${VM_ID}"
+    # TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
+    # TODO Setup portainer agent
+    # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
+    # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
+
+    # Set the VM options
+    echo "Setting the VM options for VM '${vm_id}'..."
+    sudo qm set "${vm_id}" --cicustom "vendor=${storage}:snippets/${snippet}"
+    sudo qm set "${vm_id}" --tags "ubuntu-template,noble,cloudinit,docker,zfs"
+    sudo qm set "${vm_id}" --ciuser "${user}"
+    sudo qm set "${vm_id}" --cipassword "password"
+    sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
+    sudo qm set "${vm_id}" --ipconfig0 "ip=dhcp"
+    sudo qm template "${vm_id}"
+}
+
+# Call the main function
+main "$@"
