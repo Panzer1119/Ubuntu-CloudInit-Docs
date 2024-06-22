@@ -187,13 +187,13 @@ main() {
   else
     case ${distro} in
       ubuntu)
-        img_url="https://cloud-images.ubuntu.com/${release}/current/${release}-server-cloudimg-${arch}.img"
-        checksum_url="https://cloud-images.ubuntu.com/${release}/current/SHA256SUMS"
+        img_url="https://cloud-images.ubuntu.com/${release}/${version}/${release}-server-cloudimg-${arch}.img"
+        checksum_url="https://cloud-images.ubuntu.com/${release}/${version}/SHA256SUMS"
         checksum_file="SHA256SUMS"
         ;;
       debian)
-        img_url="https://cloud.debian.org/images/cloud/OpenStack/current-${release}/debian-${release}-openstack-${arch}.qcow2"
-        checksum_url="https://cloud.debian.org/images/cloud/OpenStack/current-${release}/SHA256SUMS"
+        img_url="https://cloud.debian.org/images/cloud/OpenStack/${version}-${release}/debian-${release}-openstack-${arch}.qcow2"
+        checksum_url="https://cloud.debian.org/images/cloud/OpenStack/${version}-${release}/SHA256SUMS"
         checksum_file="SHA256SUMS"
         ;;
       fedora)
