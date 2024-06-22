@@ -331,7 +331,8 @@ main() {
     --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
     --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
+    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment" \
+    --run-command "echo -n > /etc/machine-id"
 
   # Move customized image to storage
   mv "${temp_img}" "${custom_img_path}"
