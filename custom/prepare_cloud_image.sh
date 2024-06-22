@@ -29,12 +29,12 @@ usage() {
 
 # Check for required packages
 check_requirements() {
-  local packages=("libguestfs-tools" "wget" "curl" "jq" "sha256sum" "pvesh")
-  local package
+  local commands=("virt-customize" "wget" "curl" "jq" "sha256sum" "pvesh")
+  local command
   # Check that they are installed
-  for package in "${packages[@]}"; do
-    if ! command -v "${package}" &> /dev/null; then
-      echo "Error: ${package} is not installed. Please install it first."
+  for command in "${commands[@]}"; do
+    if ! command -v "${command}" &> /dev/null; then
+      echo "Error: Command ${command} not found. Please install it first."
       exit 1
     fi
   done
