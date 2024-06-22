@@ -287,7 +287,7 @@ main() {
     fi
 
     # Download the image if not already present or if checksum does not match or force download
-    local img_name="${distro}-${release}-${build}-${arch}.img"
+    local img_name="$(basename ${img_url})"
     img_path="${storage_path}/${img_name}"
 
     if [ "${force_download}" = true ]; then
@@ -310,7 +310,7 @@ main() {
   fi
 
   # Copy image to temporary folder for customization
-  temp_img="/tmp/$(basename ${img_path})"
+  temp_img="/tmp/${img_name}"
   cp "${img_path}" "${temp_img}"
 
   # Verify telegraf configuration file exists
@@ -320,7 +320,7 @@ main() {
   fi
 
   # Customize the image
-  custom_img_name="$(basename ${img_path} .img)${custom_suffix}.img"
+  custom_img_name="$(basename "${img_path%.*}${custom_suffix}.${img_path##*.}")"
   custom_img_path="${storage_path}/${custom_img_name}"
   virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
