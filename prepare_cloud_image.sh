@@ -232,9 +232,9 @@ main() {
   virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
     --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
-    --run-command "usermod -aG docker ${user}" \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
     --run-command "sh get-docker.sh" \
+    --run-command "usermod -aG docker ${user}" \
     --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
     --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
