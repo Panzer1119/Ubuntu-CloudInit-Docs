@@ -217,7 +217,7 @@ main() {
         # Set image URL and checksum URL
         img_url="https://cloud-images.ubuntu.com/${release}/${build}/${release}-server-cloudimg-${arch}.img"
         checksum_url="https://cloud-images.ubuntu.com/${release}/${build}/SHA256SUMS"
-        checksum_file="SHA256SUMS-Ubuntu-${release}-${build}"
+        checksum_file="/tmp/SHA256SUMS-Ubuntu-${release}-${build}"
         # If SHA512 hash is provided throw an error as it is not supported
         if [ -n "${sha512_hash}" ]; then
           echo "Error: SHA512 hash is not supported for Ubuntu images."
@@ -233,7 +233,7 @@ main() {
         # Set image URL and checksum URL
         img_url="https://cloud.debian.org/images/cloud/${release}/${build}/debian-${version}-genericcloud-${arch}.qcow2"
         checksum_url="https://cloud.debian.org/images/cloud/${release}/${build}/SHA512SUMS"
-        checksum_file="SHA512SUMS-Debian-${release}-${build}"
+        checksum_file="/tmp/SHA512SUMS-Debian-${release}-${build}"
         # If SHA256 hash is provided throw an error as it is not supported
         if [ -n "${sha256_hash}" ]; then
           echo "Error: SHA256 hash is not supported for Debian images."
@@ -249,7 +249,7 @@ main() {
         # Set image URL and checksum URL
         img_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-Base-Generic.${arch}-${version}-${build}.qcow2"
         checksum_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-${version}-${build}-${arch}-CHECKSUM"
-        checksum_file="CHECKSUM-Fedora-${release}-${version}-${build}-${arch}"
+        checksum_file="/tmp/CHECKSUM-Fedora-${release}-${version}-${build}-${arch}"
         # If SHA512 hash is provided throw an error as it is not supported
         if [ -n "${sha512_hash}" ]; then
           echo "Error: SHA512 hash is not supported for Ubuntu images."
@@ -273,6 +273,10 @@ main() {
       else
         echo "Unsupported distribution: ${distro}" >&2
         exit 1
+      fi
+      # Delete the checksum file if it was downloaded
+      if [ -f "${checksum_file}" ]; then
+        rm -f "${checksum_file}"
       fi
     else
       # Select the expected checksum based on the distro
