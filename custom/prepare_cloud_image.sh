@@ -260,13 +260,24 @@ main() {
     # Download the checksum file if SHA256 and SHA512 hash is not provided
     if [ -z "${sha256_hash}" ] && [ -z "${sha512_hash}" ]; then
       wget -O "${checksum_file}" "${checksum_url}"
-      expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk '{ print $1 }')
+      # Get the expected checksum for distros Debian and Ubuntu
+      if [ "${distro}" == "debian" ] || [ "${distro}" == "ubuntu" ]; then
+        expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk '{ print $1 }')
+      elif [ "${distro}" == "fedora" ]; then
+        expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk -F' = ' '{print $2}')
+      else
+        echo "Unsupported distribution: ${distro}" >&2
+        exit 1
+      fi
     else
-      # If checksum_file is SHA512SUMS, use SHA512 hash
-      if [ "${checksum_file}" == "SHA512SUMS" ]; then
+      # Select the expected checksum based on the distro
+      if [ "${distro}" == "fedora" ] || [ "${distro}" == "ubuntu" ]; then
+        expected_checksum="${sha256_hash}"
+      elif [ "${distro}" == "debian" ]; then
         expected_checksum="${sha512_hash}"
       else
-        expected_checksum="${sha256_hash}"
+        echo "Unsupported distribution: ${distro}" >&2
+        exit 1
       fi
     fi
 
