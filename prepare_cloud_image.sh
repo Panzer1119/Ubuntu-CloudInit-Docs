@@ -19,6 +19,10 @@ usage() {
   echo "  --suffix        Custom image name suffix (default: -custom-docker)"
   echo "  --image-name    Specify an image name to use from storage"
   echo "  --sha256        Specify a SHA256 hash for local image verification"
+  echo "  --influx-url    InfluxDB URL (default: http://monitoring-vm.local.panzer1119.de:8086)"
+  echo "  --influx-org    InfluxDB organization (default: Homelab)"
+  echo "  --influx-bucket InfluxDB bucket (default: Telegraf)"
+  echo "  --influx-token  InfluxDB token (required)"
   echo "  -h, --help      Display this help message"
   exit 1
 }
@@ -68,6 +72,10 @@ main() {
   local custom_suffix="-custom-docker"
   local image_name=""
   local sha256_hash=""
+  local influx_url="http://monitoring-vm.local.panzer1119.de:8086"
+  local influx_org="Homelab"
+  local influx_bucket="Telegraf"
+  local influx_token=""
 
   # Parse options
   while [[ $# -gt 0 ]]; do
@@ -112,6 +120,22 @@ main() {
         sha256_hash="$2"
         shift 2
         ;;
+      --influx-url)
+        influx_url="$2"
+        shift 2
+        ;;
+      --influx-org)
+        influx_org="$2"
+        shift 2
+        ;;
+      --influx-bucket)
+        influx_bucket="$2"
+        shift 2
+        ;;
+      --influx-token)
+        influx_token="$2"
+        shift 2
+        ;;
       -h|--help)
         usage
         ;;
@@ -121,6 +145,12 @@ main() {
         ;;
     esac
   done
+
+  # Validate required options
+  if [ -z "${influx_token}" ]; then
+    echo "Error: --influx-token is required."
+    exit 1
+  fi
 
   # Check for required packages
   check_requirements
@@ -196,22 +226,44 @@ main() {
   temp_img="/tmp/$(basename ${img_path})"
   cp "${img_path}" "${temp_img}"
 
-  # Customize the image with virt-customize
-  sudo virt-customize -a "${temp_img}" \
-    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
-    --run-command 'curl -fsSL https://get.docker.com -o get-docker.sh' \
-    --run-command 'sh get-docker.sh' \
-    --run-command "usermod -aG docker ${user}" \
-    --run-command 'rm -f get-docker.sh'
+  # Prepare the telegraf configuration file
+  local telegraf_conf="/tmp/telegraf.conf"
+  cat <<EOF > "${telegraf_conf}"
+# Global Agent Configuration
+[agent]
+  interval = "10s"
+  round_interval = true
 
-  # Rename and move the customized image back to the storage location
+# Output Configuration
+[[outputs.influxdb_v2]]
+  urls = ["\${INFLUX_URL}"]
+  token = "\${INFLUX_TOKEN}"
+  organization = "\${INFLUX_ORG}"
+  bucket = "\${INFLUX_BUCKET}"
+
+# Input Plugins
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = false
+EOF
+
+  # Customize the image
   custom_img_name="$(basename ${img_path} .img)${custom_suffix}.img"
   custom_img_path="${storage_path}/${custom_img_name}"
-  mv "${temp_img}" "${custom_img_path}"
+  virt-customize -a "${temp_img}" \
+    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
+    --copy-in "${telegraf_conf}:/etc/telegraf/telegraf.conf" \
+    --run-command "usermod -aG docker ${user}" \
+    --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
+    --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
+    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
+    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
 
-  # Output the final image location
-  echo "Customized image saved as ${custom_img_path}"
+  # Move customized image to storage
+  mv "${temp_img}" "${custom_img_path}"
+  echo "Customized image saved to ${custom_img_path}"
 }
 
-# Call the main function with all the arguments
 main "$@"
