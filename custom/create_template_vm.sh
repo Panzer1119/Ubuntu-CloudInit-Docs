@@ -127,6 +127,10 @@ main() {
   sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
   sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${disk_zpool_docker}|g" "${snippets_dir}/${snippet}"
 
+  # TODO Setup portainer agent
+  # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
+  # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
+
   # Configure Docker GELF logging driver
   echo "Configuring Docker GELF logging driver to '${gelf_driver}'..."
   echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
