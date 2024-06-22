@@ -15,10 +15,12 @@ usage() {
   echo "  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: /mnt/pve/\$STORAGE/snippets)"
   echo "  -c, --snippet SNIPPET         Cloud-init snippet file (default: docker+zfs.yaml)"
   echo "  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
+  echo "  -C, --cloud-image CLOUD_IMAGE Cloud image file (required)"
   echo "  -h, --help                    Display this help and exit"
   echo
   echo "Required Options:"
-  echo "  -C, --cloud-image CLOUD_IMAGE Cloud image file (required)"
+  echo "  -v, --vm-id VM_ID"
+  echo "  -C, --cloud-image CLOUD_IMAGE"
   exit 1
 }
 
@@ -57,7 +59,12 @@ main() {
     esac
   done
 
-  # Check if the cloud image option is provided
+  # Check for required options
+  if [ -z "${vm_id}" ]; then
+    echo "Error: VM ID (-v, --vm-id) is required."
+    exit 1
+  fi
+
   if [ -z "${cloud_image}" ]; then
     echo "Error: Cloud image (-C, --cloud-image) is required."
     exit 1
@@ -65,15 +72,8 @@ main() {
 
   # Check if the cloud image exists locally
   local cloud_image_path="${image_dir}/${cloud_image}"
-
   if [ ! -f "${cloud_image_path}" ]; then
     echo "Error: Cloud image '${cloud_image}' not found at '${cloud_image_path}'. Exiting."
-    exit 1
-  fi
-
-  # Check if the VM ID is provided
-  if [ -z "${vm_id}" ]; then
-    echo "Error: VM ID (-v, --vm-id) is required."
     exit 1
   fi
 
