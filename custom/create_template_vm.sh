@@ -1,31 +1,60 @@
 #! /bin/bash
 
-# Usage: ./ubuntu-noble-cloudinit.sh [VM_ID] [USER] [STORAGE_VM] [SSH_KEYS] [STORAGE] [IMAGE_DIR] [SNIPPETS_DIR]
+# Default values
+DEFAULT_VM_ID="5002"
+DEFAULT_USER="panzer1119"
+DEFAULT_STORAGE_VM="storage-vm"
+DEFAULT_SSH_KEYS="/home/${DEFAULT_USER}/.ssh/authorized_keys"
+DEFAULT_STORAGE="tn-core-1"
+DEFAULT_IMAGE_DIR="/mnt/pve/${DEFAULT_STORAGE}/images"
+DEFAULT_SNIPPETS_DIR="/mnt/pve/${DEFAULT_STORAGE}/snippets"
+DEFAULT_SNIPPET="docker+zfs.yaml"
+DEFAULT_DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 
-# Input variables
-export VM_ID="${1:-5002}"
-export USER="${2:-panzer1119}"
-export STORAGE_VM="${3:-storage-vm}"
-export SSH_KEYS="${4:-/home/${USER}/.ssh/authorized_keys}"
-export STORAGE="${5:-tn-core-1}"
-export IMAGE_DIR="${6:-/mnt/pve/${STORAGE}/images}"
-export SNIPPETS_DIR="${7:-/mnt/pve/${STORAGE}/snippets}"
+# Function to print usage information
+usage() {
+    cat << EOF
+Usage: $(basename "$0") [OPTIONS]
 
-# Constants
-export DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
-export SNIPPET="docker+zfs.yaml"
-export SNIPPET_SRC_PATH="./cloud-config/${SNIPPET}"
+Options:
+  -v, --vm-id VM_ID             VM ID (default: ${DEFAULT_VM_ID})
+  -u, --user USER               User name (default: ${DEFAULT_USER})
+  -s, --storage-vm STORAGE_VM   Storage VM name (default: ${DEFAULT_STORAGE_VM})
+  -k, --ssh-keys SSH_KEYS       SSH keys path (default: ${DEFAULT_SSH_KEYS})
+  -t, --storage STORAGE         Storage name (default: ${DEFAULT_STORAGE})
+  -i, --image-dir IMAGE_DIR     Image directory path (default: ${DEFAULT_IMAGE_DIR})
+  -n, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: ${DEFAULT_SNIPPETS_DIR})
+  -c, --snippet SNIPPET         Cloud-init snippet file (default: ${DEFAULT_SNIPPET})
+  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: ${DEFAULT_DISK_ZPOOL_DOCKER})
+  -h, --help                    Display this help and exit
+EOF
+}
 
-# Unofficial strict mode
-#set -x
+# Parse command-line options
+while getopts ":v:u:s:k:t:i:n:c:d:h" opt; do
+  case ${opt} in
+    v) VM_ID="${OPTARG}" ;;
+    u) USER="${OPTARG}" ;;
+    s) STORAGE_VM="${OPTARG}" ;;
+    k) SSH_KEYS="${OPTARG}" ;;
+    t) STORAGE="${OPTARG}" ;;
+    i) IMAGE_DIR="${OPTARG}" ;;
+    n) SNIPPETS_DIR="${OPTARG}" ;;
+    c) SNIPPET="${OPTARG}" ;;
+    d) DISK_ZPOOL_DOCKER="${OPTARG}" ;;
+    h) usage; exit 0 ;;
+    \?) echo "Invalid option: -${OPTARG}. Use -h for help." >&2; exit 1 ;;
+    :) echo "Option -${OPTARG} requires an argument. Use -h for help." >&2; exit 1 ;;
+  esac
+done
+
+shift $((OPTIND -1))
 
 # Check if the cloud image exists locally
 CLOUD_IMAGE="noble-server-cloudimg-amd64.img"
 CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 
-if [ -f "${CLOUD_IMAGE_PATH}" ]; then
-  echo "Using existing cloud image '${CLOUD_IMAGE}' at '${CLOUD_IMAGE_PATH}'."
-else
+if [ ! -f "${CLOUD_IMAGE_PATH}" ]; then
   echo "Error: Cloud image '${CLOUD_IMAGE}' not found at '${CLOUD_IMAGE_PATH}'. Exiting."
   exit 1
 fi
@@ -35,8 +64,6 @@ if sudo qm list | grep -q "${VM_ID}"; then
   # Destroy the VM if it exists
   echo "Destroying existing VM '${VM_ID}'..."
   sudo qm destroy "${VM_ID}"
-#else
-#  echo "The VM '${VM_ID}' does not exist."
 fi
 
 # Create the VM
