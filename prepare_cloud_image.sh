@@ -16,12 +16,14 @@ usage() {
   echo "  -u, --user      User (default: panzer1119)"
   echo "  -s, --storage   Proxmox storage ID (default: tn-core-1)"
   echo "  -f, --force     Force re-download of the image"
+  echo "  --suffix        Custom image name suffix (default: -custom-docker)"
   echo "  -h, --help      Display this help message"
   exit 1
 }
 
 # Check for required packages
 check_requirements() {
+  local pkg
   for pkg in libguestfs-tools qemu-utils wget curl jq sha256sum pvesh; do
     if ! dpkg -s "${pkg}" &> /dev/null; then
       echo "Error: ${pkg} is not installed. Please install it first."
@@ -61,6 +63,7 @@ main() {
   local user="panzer1119"
   local storage="tn-core-1"
   local force_download=false
+  local custom_suffix="-custom-docker"
 
   # Parse options
   while [[ $# -gt 0 ]]; do
@@ -92,6 +95,10 @@ main() {
       -f|--force)
         force_download=true
         shift
+        ;;
+      --suffix)
+        custom_suffix="$2"
+        shift 2
         ;;
       -h|--help)
         usage
@@ -169,14 +176,14 @@ main() {
 
   # Customize the image with virt-customize
   sudo virt-customize -a "${temp_img}" \
-    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq \
+    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
     --run-command 'curl -fsSL https://get.docker.com -o get-docker.sh' \
     --run-command 'sh get-docker.sh' \
     --run-command "usermod -aG docker ${user}" \
     --run-command 'rm -f get-docker.sh'
 
   # Rename and move the customized image back to the storage location
-  custom_img_name="${distro}-${release}-${version}-${arch}-custom-docker.img"
+  custom_img_name="${distro}-${release}-${version}-${arch}${custom_suffix}.img"
   custom_img_path="${storage_path}/${custom_img_name}"
   mv "${temp_img}" "${custom_img_path}"
 
