@@ -17,6 +17,8 @@ runcmd:
   - systemctl start docker
   # Confirm docker is using the zfs storage driver, if not fail the build
   - docker info --format '{{.Driver}}' | grep -q zfs || exit 1
+  # Add user to group docker
+  - usermod -aG docker {{USER}}
   # Enable the ssh service
   - systemctl enable ssh
   # Reboot the VM

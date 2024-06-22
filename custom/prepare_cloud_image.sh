@@ -331,7 +331,6 @@ main() {
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
     --run-command "sh get-docker.sh" \
-    --run-command "usermod -aG docker ${user}" \
     --run-command 'curl -s https://repos.influxdata.com/influxdata-archive.key > /tmp/influxdata-archive.key' \
     --run-command 'echo "943666881a1b8d9b849b74caebf02d3465d6beb716510d86a39f6c8e8dac7515 /tmp/influxdata-archive.key" | sha256sum -c' \
     --run-command 'cat /tmp/influxdata-archive.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdata-archive.gpg > /dev/null' \
