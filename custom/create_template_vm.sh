@@ -29,28 +29,47 @@ usage() {
   exit 1
 }
 
-# Function to derive image and snippets directories based on Proxmox storage
-derive_directories() {
+# Function to derive image directory based on Proxmox storage
+derive_image_dir() {
   local storage="$1"
 
   # Get storage mount point
   local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
 
-  # Check if the storage is enabled for images and snippets
+  # Check if the storage is enabled for images
   local image_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<images\>' && echo "yes" || echo "no")
-  local snippets_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<snippets\>' && echo "yes" || echo "no")
 
-  # Check if storage is enabled for both images and snippets
-  if [ "$image_enabled" != "yes" ] || [ "$snippets_enabled" != "yes" ]; then
-    echo "Error: Storage '$storage' must be enabled for both 'images' and 'snippets'."
+  # Check if storage is enabled for images
+  if [ "$image_enabled" != "yes" ]; then
+    echo "Error: Storage '$storage' must be enabled for 'images'."
     exit 1
   fi
 
-  # Derive image and snippets directories
+  # Derive image directory
   image_dir="${mountpoint}/images"
-  snippets_dir="${mountpoint}/snippets"
 
   echo "Derived Image Directory: $image_dir"
+}
+
+# Function to derive snippets directory based on Proxmox storage
+derive_snippets_dir() {
+  local storage="$1"
+
+  # Get storage mount point
+  local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
+
+  # Check if the storage is enabled for snippets
+  local snippets_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<snippets\>' && echo "yes" || echo "no")
+
+  # Check if storage is enabled for snippets
+  if [ "$snippets_enabled" != "yes" ]; then
+    echo "Error: Storage '$storage' must be enabled for 'snippets'."
+    exit 1
+  fi
+
+  # Derive snippets directory
+  snippets_dir="${mountpoint}/snippets"
+
   echo "Derived Snippets Directory: $snippets_dir"
 }
 
@@ -103,9 +122,14 @@ main() {
     exit 1
   fi
 
-  # Derive image and snippets directories if not specified
-  if [ -z "${image_dir}" ] || [ -z "${snippets_dir}" ]; then
-    derive_directories "${storage}"
+  # Derive image directory if not specified
+  if [ -z "${image_dir}" ]; then
+    derive_image_dir "${storage}"
+  fi
+
+  # Derive snippets directory if not specified
+  if [ -z "${snippets_dir}" ]; then
+    derive_snippets_dir "${storage}"
   fi
 
   # Check if the cloud image exists locally
@@ -158,13 +182,9 @@ main() {
   sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
   sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${disk_zpool_docker}|g" "${snippets_dir}/${snippet}"
 
-  # TODO Setup portainer agent
-  # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
-  # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
-
   # Configure Docker GELF logging driver
   echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
-  # This is a placeholder, actual configuration steps would go here
+  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
