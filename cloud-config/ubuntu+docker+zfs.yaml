@@ -1,0 +1,62 @@
+#cloud-config
+groups:
+  - docker
+
+# Most of these configuration options will not be honored if the user already exists
+users:
+  - name: {{USER}}
+  - groups: docker
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+apt:
+  sources:
+    docker.list:
+      source: "deb [arch={{ARCH}} signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu {{UBUNTU_RELEASE}} stable"
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      filename: docker.list
+
+packages:
+  - qemu-guest-agent
+  - magic-wormhole
+  - zfsutils-linux
+  - ca-certificates
+  - curl
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+  - jq
+  - eza
+  - ncdu
+  - rclone
+  - cifs-utils
+
+runcmd:
+  # Stop the docker service
+  - systemctl stop docker
+  # Copy the contents of /var/lib/docker/ to /var/lib/docker.bk
+  - cp -au /var/lib/docker /var/lib/docker.bk
+  # Remove the contents of /var/lib/docker/
+  - rm -rf /var/lib/docker/*
+  # Create the zfs pool named "docker" mounted at /var/lib/docker
+  - zpool create -f docker -m /var/lib/docker {{DISK_ZPOOL_DOCKER}}
+  # If /etc/docker/daemon.json does not exist write { "storage-driver": "zfs", "storage-opts": [] } to it using jq
+  - "test -f /etc/docker/daemon.json || echo '{ \"storage-driver\": \"zfs\", \"storage-opts\": [] }' | jq > /etc/docker/daemon.json"
+  # Set "storage-driver" to "zfs" in /etc/docker/daemon.json and "storage-opts" to [] using jq and a temporary file
+  - "jq '. + { \"storage-driver\": \"zfs\", \"storage-opts\": [] }' /etc/docker/daemon.json > /tmp/daemon.json && mv /tmp/daemon.json /etc/docker/daemon.json"
+  # Start the docker service
+  - systemctl start docker
+  # Confirm docker is using the zfs storage driver, if not fail the build
+  - docker info --format '{{.Driver}}' | grep -q zfs || exit 1
+  # Add user to group docker
+  - usermod -aG docker {{USER}}
+  # Enable the ssh service
+  - systemctl enable ssh
+  # Reboot the VM
+  - reboot
+
+# Taken from https://forum.proxmox.com/threads/combining-custom-cloud-init-with-auto-generated.59008/page-3#post-428772
