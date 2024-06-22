@@ -16,6 +16,9 @@ usage() {
   echo "  -c, --snippet SNIPPET         Cloud-init snippet file (default: docker+zfs.yaml)"
   echo "  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
   echo "  -C, --cloud-image CLOUD_IMAGE Cloud image file (required)"
+  echo "  -p, --cipassword CIPASSWORD   Cloud-init password (default: password)"
+  echo "  -I, --ipconfig0 IPCONFIG0     IP configuration (default: ip=dhcp)"
+  echo "  -T, --tags TAGS               Tags for the VM (default: cloudinit,docker,zfs)"
   echo "  -h, --help                    Display this help and exit"
   echo
   echo "Required Options:"
@@ -38,9 +41,12 @@ main() {
   local snippet="docker+zfs.yaml"
   local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
   local cloud_image=""
+  local cipassword="password"
+  local ipconfig0="ip=dhcp"
+  local tags="cloudinit,docker,zfs"
 
   # Parse command-line options
-  while getopts ":v:n:u:s:k:t:i:N:c:d:C:h" opt; do
+  while getopts ":v:n:u:s:k:t:i:N:c:d:C:p:I:T:h" opt; do
     case ${opt} in
       v) vm_id="${OPTARG}" ;;
       n) vm_name="${OPTARG}" ;;
@@ -53,6 +59,9 @@ main() {
       c) snippet="${OPTARG}" ;;
       d) disk_zpool_docker="${OPTARG}" ;;
       C) cloud_image="${OPTARG}" ;;
+      p) cipassword="${OPTARG}" ;;
+      I) ipconfig0="${OPTARG}" ;;
+      T) tags="${OPTARG}" ;;
       h) usage ;;
       \?) echo "Invalid option: -${OPTARG}. Use -h for help." >&2; exit 1 ;;
       :) echo "Option -${OPTARG} requires an argument. Use -h for help." >&2; exit 1 ;;
@@ -128,11 +137,11 @@ main() {
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
   sudo qm set "${vm_id}" --cicustom "vendor=${storage}:snippets/${snippet}"
-  sudo qm set "${vm_id}" --tags "ubuntu-template,noble,cloudinit,docker,zfs"
+  sudo qm set "${vm_id}" --tags "${tags}"
   sudo qm set "${vm_id}" --ciuser "${user}"
-  sudo qm set "${vm_id}" --cipassword "password"
+  sudo qm set "${vm_id}" --cipassword "${cipassword}"
   sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
-  sudo qm set "${vm_id}" --ipconfig0 "ip=dhcp"
+  sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
   sudo qm template "${vm_id}"
 }
 
