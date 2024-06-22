@@ -45,10 +45,11 @@ check_proxmox_storage() {
   local storage=$1
   local storage_info storage_path
 
-  storage_info=$(pvesh get /storage/${storage}) || { echo "Error: Storage ID ${storage} does not exist."; exit 1; }
+  storage_info=$(pvesh get /storage/${storage} --output-format json) || { echo "Error: Storage ID ${storage} does not exist."; exit 1; }
 
-  if ! echo "${storage_info}" | grep -q 'content.*images'; then
-    echo "Error: Storage ID ${storage} is not enabled to store images."
+  # Check if storage is enabled for iso
+  if ! echo "${storage_info}" | jq -e '.content | index("iso")' &> /dev/null; then
+    echo "Error: Storage ${storage} must be enabled for 'iso'."
     exit 1
   fi
 
@@ -58,7 +59,7 @@ check_proxmox_storage() {
     exit 1
   fi
 
-  echo "${storage_path}"
+  echo "${storage_path}/iso"
 }
 
 # Main function
