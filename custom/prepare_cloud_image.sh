@@ -30,7 +30,7 @@ usage() {
 # Check for required packages
 check_requirements() {
   local pkg
-  for pkg in libguestfs-tools qemu-utils wget curl jq sha256sum pvesh; do
+  for pkg in libguestfs-tools wget curl jq sha256sum pvesh; do
     if ! dpkg -s "${pkg}" &> /dev/null; then
       echo "Error: ${pkg} is not installed. Please install it first."
       exit 1
