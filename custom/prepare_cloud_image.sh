@@ -8,9 +8,20 @@ usage() {
   echo "  -d, --distro       Distribution (default: ubuntu)"
   echo "                     Available options: ubuntu, debian, fedora"
   echo "  -r, --release      Release (default: noble)"
-  echo "                     Examples: noble, jammy"
-  echo "  -v, --version      Version (default: current)"
-  echo "                     Example: current"
+  echo "                     Used by Ubuntu and Debian only"
+  echo "                     Examples:"
+  echo "                       - Ubuntu: noble"
+  echo "                       - Debian: bookworm"
+  echo "  -v, --version      Version (default: 24.04)"
+  echo "                     Used by Debian and Fedora only"
+  echo "                     Examples:"
+  echo "                       - Debian: 12"
+  echo "                       - Fedora: 40"
+  echo "  -b, --build        Build (default: current)"
+  echo "                     Examples:"
+  echo "                       - Ubuntu: current"
+  echo "                       - Debian: latest"
+  echo "                       - Fedora: 1.14"
   echo "  -a, --arch         Architecture (default: amd64)"
   echo "                     Available options: amd64"
   echo "  -u, --user         User (default: panzer1119)"
@@ -19,6 +30,7 @@ usage() {
   echo "  --suffix           Custom image name suffix (default: -custom-docker)"
   echo "  --image-name       Specify an image name to use from storage"
   echo "  --sha256           Specify a SHA256 hash for local image verification"
+  echo "  --sha512           Specify a SHA512 hash for local image verification"
   echo "  --influx-url       InfluxDB URL (default: http://monitoring-vm.local.panzer1119.de:8086)"
   echo "  --influx-org       InfluxDB organization (default: Homelab)"
   echo "  --influx-bucket    InfluxDB bucket (default: Telegraf)"
@@ -85,15 +97,17 @@ check_proxmox_storage() {
 main() {
   # Default values
   local distro="ubuntu"
-  local release="noble"
-  local version="current"
-  local arch="amd64"
+  local release=""
+  local version=""
+  local build=""
+  local arch=""
   local user="panzer1119"
   local storage="tn-core-1"
   local force_download=false
   local custom_suffix="-custom-docker"
   local image_name=""
   local sha256_hash=""
+  local sha512_hash=""
   local influx_url="http://monitoring-vm.local.panzer1119.de:8086"
   local influx_org="Homelab"
   local influx_bucket="Telegraf"
@@ -112,6 +126,10 @@ main() {
         ;;
       -v|--version)
         version="$2"
+        shift 2
+        ;;
+      -b|--build)
+        build="$2"
         shift 2
         ;;
       -a|--arch)
@@ -140,6 +158,10 @@ main() {
         ;;
       --sha256)
         sha256_hash="$2"
+        shift 2
+        ;;
+      --sha512)
+        sha512_hash="$2"
         shift 2
         ;;
       --influx-url)
@@ -187,19 +209,47 @@ main() {
   else
     case ${distro} in
       ubuntu)
-        img_url="https://cloud-images.ubuntu.com/${release}/${version}/${release}-server-cloudimg-${arch}.img"
-        checksum_url="https://cloud-images.ubuntu.com/${release}/${version}/SHA256SUMS"
-        checksum_file="SHA256SUMS"
+        # Set default values if not provided
+        [ -z "${release}" ] && release="noble"
+        [ -z "${version}" ] && version="24.04" # Is not used
+        [ -z "${build}" ] && build="current"
+        [ -z "${arch}" ] && arch="amd64"
+        # Set image URL and checksum URL
+        img_url="https://cloud-images.ubuntu.com/${release}/${build}/${release}-server-cloudimg-${arch}.img"
+        checksum_url="https://cloud-images.ubuntu.com/${release}/${build}/SHA256SUMS"
+        checksum_file="SHA256SUMS-Ubuntu-${release}-${build}"
+        # If SHA512 hash is provided throw an error as it is not supported
+        if [ -n "${sha512_hash}" ]; then
+          echo "Error: SHA512 hash is not supported for Ubuntu images."
+          exit 1
+        fi
         ;;
       debian)
-        img_url="https://cloud.debian.org/images/cloud/OpenStack/${version}-${release}/debian-${release}-openstack-${arch}.qcow2"
-        checksum_url="https://cloud.debian.org/images/cloud/OpenStack/${version}-${release}/SHA256SUMS"
-        checksum_file="SHA256SUMS"
+        # Set default values if not provided
+        [ -z "${release}" ] && release="bookworm"
+        [ -z "${version}" ] && version="12"
+        [ -z "${build}" ] && build="latest"
+        [ -z "${arch}" ] && arch="amd64"
+        # Set image URL and checksum URL
+        img_url="https://cloud.debian.org/images/cloud/${release}/${build}/debian-${version}-genericcloud-${arch}.qcow2"
+        checksum_url="https://cloud.debian.org/images/cloud/${release}/${build}/SHA512SUMS"
+        checksum_file="SHA512SUMS-Debian-${release}-${build}"
+        # If SHA256 hash is provided throw an error as it is not supported
+        if [ -n "${sha256_hash}" ]; then
+          echo "Error: SHA256 hash is not supported for Debian images."
+          exit 1
+        fi
         ;;
       fedora)
-        img_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-Cloud-Base-${version}.${arch}.qcow2"
-        checksum_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/CHECKSUM"
-        checksum_file="CHECKSUM"
+        # Set default values if not provided
+        release="Cloud" # There are no specific releases for Fedora Cloud
+        [ -z "${version}" ] && version="40"
+        [ -z "${build}" ] && build="1.14"
+        [ -z "${arch}" ] && arch="x86_64"
+        # Set image URL and checksum URL
+        img_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-Base-Generic.${arch}-${version}-${build}.qcow2"
+        checksum_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-${version}-${build}-${arch}-CHECKSUM"
+        checksum_file="CHECKSUM-Fedora-${release}-${version}-${build}-${arch}"
         ;;
       *)
         echo "Unsupported distribution: ${distro}" >&2
@@ -207,16 +257,21 @@ main() {
         ;;
     esac
 
-    # Download the checksum file if SHA256 hash is not provided
-    if [ -z "${sha256_hash}" ]; then
+    # Download the checksum file if SHA256 and SHA512 hash is not provided
+    if [ -z "${sha256_hash}" ] && [ -z "${sha512_hash}" ]; then
       wget -O "${checksum_file}" "${checksum_url}"
       expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk '{ print $1 }')
     else
-      expected_checksum="${sha256_hash}"
+      # If checksum_file is SHA512SUMS, use SHA512 hash
+      if [ "${checksum_file}" == "SHA512SUMS" ]; then
+        expected_checksum="${sha512_hash}"
+      else
+        expected_checksum="${sha256_hash}"
+      fi
     fi
 
     # Download the image if not already present or if checksum does not match or force download
-    local img_name="${distro}-${release}-${version}-${arch}.img"
+    local img_name="${distro}-${release}-${build}-${arch}.img"
     img_path="${storage_path}/${img_name}"
 
     if [ "${force_download}" = true ]; then
