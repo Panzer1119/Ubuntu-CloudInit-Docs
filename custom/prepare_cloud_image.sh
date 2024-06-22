@@ -29,10 +29,12 @@ usage() {
 
 # Check for required packages
 check_requirements() {
-  local pkg
-  for pkg in libguestfs-tools wget curl jq sha256sum pvesh; do
-    if ! dpkg -s "${pkg}" &> /dev/null; then
-      echo "Error: ${pkg} is not installed. Please install it first."
+  local packages=("libguestfs-tools" "wget" "curl" "jq" "sha256sum" "pvesh")
+  local package
+  # Check that they are installed
+  for package in "${packages[@]}"; do
+    if ! command -v "${package}" &> /dev/null; then
+      echo "Error: ${package} is not installed. Please install it first."
       exit 1
     fi
   done
