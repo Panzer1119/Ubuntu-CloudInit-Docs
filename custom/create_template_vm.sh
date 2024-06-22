@@ -11,7 +11,7 @@ usage() {
   echo "  -s, --storage-vm STORAGE_VM    Storage VM name (default: storage-vm)"
   echo "  -k, --ssh-keys SSH_KEYS        SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
   echo "  -t, --storage STORAGE          Storage name (default: tn-core-1)"
-  echo "  -i, --image-dir IMAGE_DIR      Image directory path (default: derived from STORAGE)"
+  echo "  -i, --images-dir IMAGES_DIR    Images directory path (default: derived from STORAGE)"
   echo "  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: derived from STORAGE)"
   echo "  -c, --snippet SNIPPET          Cloud-init snippet file (default: docker+zfs.yaml)"
   echo "  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
@@ -46,9 +46,9 @@ derive_image_dir() {
   fi
 
   # Derive image directory
-  image_dir="${mountpoint}/images"
+  images_dir="${mountpoint}/images"
 
-  echo "Derived Image Directory: $image_dir"
+  echo "Derived Images Directory: $images_dir"
 }
 
 # Function to derive snippets directory based on Proxmox storage
@@ -82,7 +82,7 @@ main() {
   local storage_vm="storage-vm"
   local ssh_keys="/home/${user}/.ssh/authorized_keys"
   local storage="tn-core-1"
-  local image_dir=""
+  local images_dir=""
   local snippets_dir=""
   local snippet="docker+zfs.yaml"
   local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
@@ -101,7 +101,7 @@ main() {
       s) storage_vm="${OPTARG}" ;;
       k) ssh_keys="${OPTARG}" ;;
       t) storage="${OPTARG}" ;;
-      i) image_dir="${OPTARG}" ;;
+      i) images_dir="${OPTARG}" ;;
       N) snippets_dir="${OPTARG}" ;;
       c) snippet="${OPTARG}" ;;
       d) disk_zpool_docker="${OPTARG}" ;;
@@ -123,7 +123,7 @@ main() {
   fi
 
   # Derive image directory if not specified
-  if [ -z "${image_dir}" ]; then
+  if [ -z "${images_dir}" ]; then
     derive_image_dir "${storage}"
   fi
 
@@ -133,7 +133,7 @@ main() {
   fi
 
   # Check if the cloud image exists locally
-  local cloud_image_path="${image_dir}/${cloud_image}"
+  local cloud_image_path="${images_dir}/${cloud_image}"
   if [ ! -f "${cloud_image_path}" ]; then
     echo "Error: Cloud image '${cloud_image}' not found at '${cloud_image_path}'. Exiting."
     exit 1
@@ -198,5 +198,5 @@ main() {
   echo "VM creation and configuration completed successfully."
 }
 
-# Run main function
+# Run main function with command-line arguments
 main "$@"
