@@ -33,6 +33,8 @@ usage() {
 derive_images_dir() {
   local storage="$1"
 
+  #FIXME This does not work
+
   # Get storage mount point
   local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
 
@@ -52,6 +54,8 @@ derive_images_dir() {
 # Function to derive snippets directory based on Proxmox storage
 derive_snippets_dir() {
   local storage="$1"
+
+  #FIXME This does not work
 
   # Get storage mount point
   local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
