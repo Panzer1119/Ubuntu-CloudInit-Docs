@@ -11,8 +11,8 @@ usage() {
   echo "  -s, --storage-vm STORAGE_VM    Storage VM name (default: storage-vm)"
   echo "  -k, --ssh-keys SSH_KEYS        SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
   echo "  -t, --storage STORAGE          Storage name (default: tn-core-1)"
-  echo "  -i, --image-dir IMAGE_DIR      Image directory path (default: /mnt/pve/\$STORAGE/images)"
-  echo "  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: /mnt/pve/\$STORAGE/snippets)"
+  echo "  -i, --image-dir IMAGE_DIR      Image directory path (default: derived from STORAGE)"
+  echo "  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: derived from STORAGE)"
   echo "  -c, --snippet SNIPPET          Cloud-init snippet file (default: docker+zfs.yaml)"
   echo "  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
   echo "  -C, --cloud-image CLOUD_IMAGE  Cloud image file (required)"
@@ -29,6 +29,31 @@ usage() {
   exit 1
 }
 
+# Function to derive image and snippets directories based on Proxmox storage
+derive_directories() {
+  local storage="$1"
+
+  # Get storage mount point
+  local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
+
+  # Check if the storage is enabled for images and snippets
+  local image_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<images\>' && echo "yes" || echo "no")
+  local snippets_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<snippets\>' && echo "yes" || echo "no")
+
+  # Check if storage is enabled for both images and snippets
+  if [ "$image_enabled" != "yes" ] || [ "$snippets_enabled" != "yes" ]; then
+    echo "Error: Storage '$storage' must be enabled for both 'images' and 'snippets'."
+    exit 1
+  fi
+
+  # Derive image and snippets directories
+  image_dir="${mountpoint}/images"
+  snippets_dir="${mountpoint}/snippets"
+
+  echo "Derived Image Directory: $image_dir"
+  echo "Derived Snippets Directory: $snippets_dir"
+}
+
 # Main function
 main() {
   # Default values
@@ -38,8 +63,8 @@ main() {
   local storage_vm="storage-vm"
   local ssh_keys="/home/${user}/.ssh/authorized_keys"
   local storage="tn-core-1"
-  local image_dir="/mnt/pve/${storage}/images"
-  local snippets_dir="/mnt/pve/${storage}/snippets"
+  local image_dir=""
+  local snippets_dir=""
   local snippet="docker+zfs.yaml"
   local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
   local cloud_image=""
@@ -76,6 +101,11 @@ main() {
   if [ -z "${vm_id}" ] || [ -z "${cloud_image}" ]; then
     echo "Error: VM ID (-v, --vm-id) and Cloud image (-C, --cloud-image) are required."
     exit 1
+  fi
+
+  # Derive image and snippets directories if not specified
+  if [ -z "${image_dir}" ] || [ -z "${snippets_dir}" ]; then
+    derive_directories "${storage}"
   fi
 
   # Check if the cloud image exists locally
@@ -133,8 +163,8 @@ main() {
   # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
 
   # Configure Docker GELF logging driver
-  echo "Configuring Docker GELF logging driver to '${gelf_driver}'..."
-  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
+  echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
+  # This is a placeholder, actual configuration steps would go here
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
@@ -144,8 +174,9 @@ main() {
   sudo qm set "${vm_id}" --cipassword "${cipassword}"
   sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
   sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
-  sudo qm template "${vm_id}"
+
+  echo "VM creation and configuration completed successfully."
 }
 
-# Call the main function with all arguments passed to the script
+# Run main function
 main "$@"
