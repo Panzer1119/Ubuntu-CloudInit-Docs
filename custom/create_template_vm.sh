@@ -5,23 +5,23 @@ usage() {
   echo "Usage: $(basename "$0") [OPTIONS]"
   echo
   echo "Options:"
-  echo "  -v, --vm-id VM_ID              VM ID (required)"
-  echo "  -n, --vm-name VM_NAME          VM name (default: docker-zfs-template-vm)"
-  echo "  -u, --user USER                User name (default: panzer1119)"
-  echo "  -s, --storage-vm STORAGE_VM    Storage VM name (default: storage-vm)"
-  echo "  -k, --ssh-keys SSH_KEYS        SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
-  echo "  -t, --storage STORAGE          Storage name (default: tn-core-1)"
-  echo "  -i, --images-dir IMAGES_DIR    Images directory path (default: derived from STORAGE)"
-  echo "  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: derived from STORAGE)"
-  echo "  -c, --snippet SNIPPET          Cloud-init snippet file (default: docker+zfs.yaml)"
-  echo "  -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
-  echo "  -C, --cloud-image CLOUD_IMAGE  Cloud image file (required)"
-  echo "  -p, --cipassword CIPASSWORD    Cloud-init password (default: password)"
-  echo "  -I, --ipconfig0 IPCONFIG0      IP configuration (default: ip=dhcp)"
-  echo "                                 Example for static IPv4 with gateway: ip=192.168.1.100/24,gw=192.168.1.1"
-  echo "  -T, --tags TAGS                Tags for the VM (default: cloudinit,docker,zfs)"
-  echo "  -g, --gelf-driver ADDRESS      Address for Docker GELF logging driver (default: udp://monitoring-vm.local.panzer1119.de:12201)"
-  echo "  -h, --help                     Display this help and exit"
+  echo "  -v, --vm-id VM_ID               VM ID (required)"
+  echo "  -n, --vm-name VM_NAME           VM name (default: docker-zfs-template-vm)"
+  echo "  -u, --user USER                 User name (default: panzer1119)"
+  echo "  -s, --storage-vm STORAGE_VM     Storage VM name (default: storage-vm)"
+  echo "  -k, --ssh-keys SSH_KEYS         SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
+  echo "  -t, --storage STORAGE           Storage name (default: tn-core-1)"
+  echo "  -i, --images-dir IMAGES_DIR     Images directory path (default: derived from STORAGE)"
+  echo "  -N, --snippets-dir SNIPPETS_DIR Snippets directory path (default: derived from STORAGE)"
+  echo "  -c, --snippet SNIPPET           Cloud-init snippet file (default: docker+zfs.yaml)"
+  echo "  -d, --disk-zfs-pool-docker DISK_ZFS_POOL_DOCKER  Docker ZFS pool disk (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
+  echo "  -C, --cloud-image CLOUD_IMAGE   Cloud image file (required)"
+  echo "  -p, --cipassword CIPASSWORD     Cloud-init password (default: password)"
+  echo "  -I, --ipconfig0 IPCONFIG0       IP configuration (default: ip=dhcp)"
+  echo "                                  Example for static IPv4 with gateway: ip=192.168.1.100/24,gw=192.168.1.1"
+  echo "  -T, --tags TAGS                 Tags for the VM (default: cloudinit,docker,zfs)"
+  echo "  -g, --gelf-driver ADDRESS       Address for Docker GELF logging driver (default: udp://monitoring-vm.local.panzer1119.de:12201)"
+  echo "  -h, --help                      Display this help and exit"
   echo
   echo "Required Options:"
   echo "  -v, --vm-id VM_ID"
@@ -30,7 +30,7 @@ usage() {
 }
 
 # Function to derive image directory based on Proxmox storage
-derive_image_dir() {
+derive_images_dir() {
   local storage="$1"
 
   # Get storage mount point
@@ -46,9 +46,7 @@ derive_image_dir() {
   fi
 
   # Derive image directory
-  images_dir="${mountpoint}/images"
-
-  echo "Derived Images Directory: $images_dir"
+  echo "${mountpoint}/images"
 }
 
 # Function to derive snippets directory based on Proxmox storage
@@ -68,9 +66,7 @@ derive_snippets_dir() {
   fi
 
   # Derive snippets directory
-  snippets_dir="${mountpoint}/snippets"
-
-  echo "Derived Snippets Directory: $snippets_dir"
+  echo "${mountpoint}/snippets"
 }
 
 # Main function
@@ -85,7 +81,7 @@ main() {
   local images_dir=""
   local snippets_dir=""
   local snippet="docker+zfs.yaml"
-  local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
+  local disk_zfs_pool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
   local cloud_image=""
   local cipassword="password"
   local ipconfig0="ip=dhcp"
@@ -104,7 +100,7 @@ main() {
       i) images_dir="${OPTARG}" ;;
       N) snippets_dir="${OPTARG}" ;;
       c) snippet="${OPTARG}" ;;
-      d) disk_zpool_docker="${OPTARG}" ;;
+      d) disk_zfs_pool_docker="${OPTARG}" ;;
       C) cloud_image="${OPTARG}" ;;
       p) cipassword="${OPTARG}" ;;
       I) ipconfig0="${OPTARG}" ;;
@@ -124,12 +120,12 @@ main() {
 
   # Derive image directory if not specified
   if [ -z "${images_dir}" ]; then
-    derive_image_dir "${storage}"
+    images_dir=$(derive_images_dir "${storage}")
   fi
 
   # Derive snippets directory if not specified
   if [ -z "${snippets_dir}" ]; then
-    derive_snippets_dir "${storage}"
+    snippets_dir=$(derive_snippets_dir "${storage}")
   fi
 
   # Check if the cloud image exists locally
@@ -178,25 +174,4 @@ main() {
   sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
 
   # Replace variables in the cloud-init configuration
-  echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
-  sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${disk_zpool_docker}|g" "${snippets_dir}/${snippet}"
-
-  # Configure Docker GELF logging driver
-  echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
-  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
-
-  # Set the VM options
-  echo "Setting the VM options for VM '${vm_id}'..."
-  sudo qm set "${vm_id}" --cicustom "vendor=${storage}:snippets/${snippet}"
-  sudo qm set "${vm_id}" --tags "${tags}"
-  sudo qm set "${vm_id}" --ciuser "${user}"
-  sudo qm set "${vm_id}" --cipassword "${cipassword}"
-  sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
-  sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
-
-  echo "VM creation and configuration completed successfully."
-}
-
-# Run main function with command-line arguments
-main "$@"
+  echo "Replacing variables in the cloud
