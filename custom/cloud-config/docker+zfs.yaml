@@ -8,7 +8,7 @@ runcmd:
   # Remove the contents of /var/lib/docker/
   - rm -rf /var/lib/docker/*
   # Create the zfs pool named "docker" mounted at /var/lib/docker
-  - zpool create -f docker -m /var/lib/docker {{DISK_ZPOOL_DOCKER}}
+  - zpool create -f docker -m /var/lib/docker {{DISK_ZFS_POOL_DOCKER}}
   # If /etc/docker/daemon.json does not exist write { "storage-driver": "zfs", "storage-opts": [] } to it using jq
   - "test -f /etc/docker/daemon.json || echo '{ \"storage-driver\": \"zfs\", \"storage-opts\": [] }' | jq > /etc/docker/daemon.json"
   # Set "storage-driver" to "zfs" in /etc/docker/daemon.json and "storage-opts" to [] using jq and a temporary file

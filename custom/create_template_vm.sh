@@ -174,4 +174,29 @@ main() {
   sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
 
   # Replace variables in the cloud-init configuration
-  echo "Replacing variables in the cloud
+  echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
+  sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{DISK_ZFS_POOL_DOCKER}}|${disk_zfs_pool_docker}|g" "${snippets_dir}/${snippet}"
+
+  # TODO Setup portainer agent
+  # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
+  # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
+
+  # Configure Docker GELF logging driver
+  echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
+  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
+
+  # Set the VM options
+  echo "Setting the VM options for VM '${vm_id}'..."
+  sudo qm set "${vm_id}" --cicustom "vendor=${storage}:snippets/${snippet}"
+  sudo qm set "${vm_id}" --tags "${tags}"
+  sudo qm set "${vm_id}" --ciuser "${user}"
+  sudo qm set "${vm_id}" --cipassword "${cipassword}"
+  sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
+  sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
+
+  echo "VM creation and configuration completed successfully."
+}
+
+# Run main function with command-line arguments
+main "$@"
