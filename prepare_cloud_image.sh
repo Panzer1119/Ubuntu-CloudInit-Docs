@@ -1,14 +1,5 @@
 #!/bin/bash
 
-# Default values
-distro="ubuntu"
-release="noble"
-version="current"
-arch="amd64"
-user="panzer1119"
-storage="tn-core-1"
-force_download=false
-
 # Help function
 usage() {
   echo "Usage: $0 [options]"
@@ -41,7 +32,9 @@ check_requirements() {
 
 # Check Proxmox storage
 check_proxmox_storage() {
-  local storage_info
+  local storage=$1
+  local storage_info storage_path
+
   storage_info=$(pvesh get /storage/${storage}) || { echo "Error: Storage ID ${storage} does not exist."; exit 1; }
 
   if ! echo "${storage_info}" | grep -q 'content.*images'; then
@@ -49,18 +42,26 @@ check_proxmox_storage() {
     exit 1
   fi
 
-  local storage_path
   storage_path=$(echo "${storage_info}" | jq -r '.path')
   if [ -z "${storage_path}" ]; then
     echo "Error: Could not determine storage path for ${storage}."
     exit 1
   fi
 
-  STORAGE_PATH=${storage_path}
+  echo "${storage_path}"
 }
 
 # Main function
 main() {
+  # Default values
+  local distro="ubuntu"
+  local release="noble"
+  local version="current"
+  local arch="amd64"
+  local user="panzer1119"
+  local storage="tn-core-1"
+  local force_download=false
+
   # Parse options
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -106,9 +107,12 @@ main() {
   check_requirements
 
   # Check Proxmox storage
-  check_proxmox_storage
+  local storage_path
+  storage_path=$(check_proxmox_storage "${storage}")
 
   # Determine the download URL and checksum URL based on options
+  local img_url checksum_url checksum_file img_name img_path temp_img custom_img_name custom_img_path expected_checksum existing_checksum
+
   case ${distro} in
     ubuntu)
       img_url="https://cloud-images.ubuntu.com/${release}/current/${release}-server-cloudimg-${arch}.img"
@@ -135,12 +139,11 @@ main() {
   wget -O "${checksum_file}" "${checksum_url}"
 
   # Extract the checksum for the image
-  local expected_checksum
   expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk '{ print $1 }')
 
   # Download the image if not already present or if checksum does not match or force download
   img_name="${distro}-${release}-${version}-${arch}.img"
-  img_path="${STORAGE_PATH}/${img_name}"
+  img_path="${storage_path}/${img_name}"
 
   if [ "${force_download}" = true ]; then
     echo "Forcing download of the image."
@@ -148,7 +151,6 @@ main() {
   else
     if [ -f "${img_path}" ]; then
       echo "Image already exists in storage. Checking hash..."
-      local existing_checksum
       existing_checksum=$(sha256sum "${img_path}" | awk '{ print $1 }')
       if [ "${existing_checksum}" == "${expected_checksum}" ]; then
         echo "Image checksum matches. Using existing image."
@@ -166,7 +168,7 @@ main() {
   cp "${img_path}" "${temp_img}"
 
   # Customize the image with virt-customize
-  sudo virt-customize -a ${temp_img} \
+  sudo virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq \
     --run-command 'curl -fsSL https://get.docker.com -o get-docker.sh' \
     --run-command 'sh get-docker.sh' \
@@ -175,7 +177,7 @@ main() {
 
   # Rename and move the customized image back to the storage location
   custom_img_name="${distro}-${release}-${version}-${arch}-custom-docker.img"
-  custom_img_path="${STORAGE_PATH}/${custom_img_name}"
+  custom_img_path="${storage_path}/${custom_img_name}"
   mv "${temp_img}" "${custom_img_path}"
 
   # Output the final image location
