@@ -44,22 +44,34 @@ check_requirements() {
 check_proxmox_storage() {
   local storage=$1
   local storage_info storage_path
+  local content_images_enabled=false
+  local content_iso_enabled=false
 
   storage_info=$(pvesh get /storage/${storage} --output-format json) || { echo "Error: Storage ID ${storage} does not exist."; exit 1; }
 
-  # Check if storage is enabled for iso
-  if ! echo "${storage_info}" | jq -e '.content | index("iso")' &> /dev/null; then
-    echo "Error: Storage ${storage} must be enabled for 'iso'."
+  # Check if storage is enabled for images and ISOs
+  content_images_enabled=$(echo "${storage_info}" | jq -e '.content | index("images")' &> /dev/null && echo "yes" || echo "no")
+  content_iso_enabled=$(echo "${storage_info}" | jq -e '.content | index("iso")' &> /dev/null && echo "yes" || echo "no")
+
+  # Check if both images and ISOs are disabled
+  if [ "${content_images_enabled}" == "no" ] && [ "${content_iso_enabled}" == "no" ]; then
+    echo "Error: Storage ${storage} must be enabled for 'images' or 'iso'."
     exit 1
   fi
 
+  # Get storage path
   storage_path=$(echo "${storage_info}" | jq -r '.path')
   if [ -z "${storage_path}" ]; then
     echo "Error: Could not determine storage path for ${storage}."
     exit 1
   fi
 
-  echo "${storage_path}/iso"
+  # Return the storage path (prefer images over ISOs)
+  if [ "${content_images_enabled}" == "yes" ]; then
+    echo "${storage_path}/images"
+  else
+    echo "${storage_path}/template/iso"
+  fi
 }
 
 # Main function
