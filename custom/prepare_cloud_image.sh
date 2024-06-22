@@ -325,7 +325,6 @@ main() {
   # If the command fails, delete the temporary image and exit
   if ! virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
-    --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
     --run-command "sh get-docker.sh" \
     --run-command "usermod -aG docker ${user}" \
@@ -334,6 +333,7 @@ main() {
     --run-command 'cat /tmp/influxdata-archive.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdata-archive.gpg > /dev/null' \
     --run-command 'echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main" | tee /etc/apt/sources.list.d/influxdata.list' \
     --run-command 'apt-get update && apt-get install -y telegraf' \
+    --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
     --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
     --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
