@@ -250,6 +250,11 @@ main() {
         img_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-Base-Generic.${arch}-${version}-${build}.qcow2"
         checksum_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${version}/Cloud/${arch}/images/Fedora-${release}-${version}-${build}-${arch}-CHECKSUM"
         checksum_file="CHECKSUM-Fedora-${release}-${version}-${build}-${arch}"
+        # If SHA512 hash is provided throw an error as it is not supported
+        if [ -n "${sha512_hash}" ]; then
+          echo "Error: SHA512 hash is not supported for Ubuntu images."
+          exit 1
+        fi
         ;;
       *)
         echo "Unsupported distribution: ${distro}" >&2
