@@ -5,25 +5,25 @@ usage() {
   echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
-  echo "  -d, --distro    Distribution (default: ubuntu)"
-  echo "                  Available options: ubuntu, debian, fedora"
-  echo "  -r, --release   Release (default: noble)"
-  echo "                  Examples: noble, jammy"
-  echo "  -v, --version   Version (default: current)"
-  echo "                  Example: current"
-  echo "  -a, --arch      Architecture (default: amd64)"
-  echo "                  Available options: amd64"
-  echo "  -u, --user      User (default: panzer1119)"
-  echo "  -s, --storage   Proxmox storage ID (default: tn-core-1)"
-  echo "  -f, --force     Force re-download of the image"
-  echo "  --suffix        Custom image name suffix (default: -custom-docker)"
-  echo "  --image-name    Specify an image name to use from storage"
-  echo "  --sha256        Specify a SHA256 hash for local image verification"
-  echo "  --influx-url    InfluxDB URL (default: http://monitoring-vm.local.panzer1119.de:8086)"
-  echo "  --influx-org    InfluxDB organization (default: Homelab)"
-  echo "  --influx-bucket InfluxDB bucket (default: Telegraf)"
-  echo "  --influx-token  InfluxDB token (optional)"
-  echo "  -h, --help      Display this help message"
+  echo "  -d, --distro       Distribution (default: ubuntu)"
+  echo "                     Available options: ubuntu, debian, fedora"
+  echo "  -r, --release      Release (default: noble)"
+  echo "                     Examples: noble, jammy"
+  echo "  -v, --version      Version (default: current)"
+  echo "                     Example: current"
+  echo "  -a, --arch         Architecture (default: amd64)"
+  echo "                     Available options: amd64"
+  echo "  -u, --user         User (default: panzer1119)"
+  echo "  -s, --storage      Proxmox storage ID (default: tn-core-1)"
+  echo "  -f, --force        Force re-download of the image"
+  echo "  --suffix           Custom image name suffix (default: -custom-docker)"
+  echo "  --image-name       Specify an image name to use from storage"
+  echo "  --sha256           Specify a SHA256 hash for local image verification"
+  echo "  --influx-url       InfluxDB URL (default: http://monitoring-vm.local.panzer1119.de:8086)"
+  echo "  --influx-org       InfluxDB organization (default: Homelab)"
+  echo "  --influx-bucket    InfluxDB bucket (default: Telegraf)"
+  echo "  --influx-token     InfluxDB token (optional)"
+  echo "  -h, --help         Display this help message"
   exit 1
 }
 
@@ -230,18 +230,15 @@ main() {
   custom_img_name="$(basename ${img_path} .img)${custom_suffix}.img"
   custom_img_path="${storage_path}/${custom_img_name}"
   virt-customize -a "${temp_img}" \
-    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
+    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
     --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
     --run-command "usermod -aG docker ${user}" \
+    --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
+    --run-command "sh get-docker.sh" \
     --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment"
-
-  # Optionally set the InfluxDB token
-  if [ -n "${influx_token}" ]; then
-    virt-customize -a "${temp_img}" \
-      --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
-  fi
+    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
+    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
 
   # Move customized image to storage
   mv "${temp_img}" "${custom_img_path}"
