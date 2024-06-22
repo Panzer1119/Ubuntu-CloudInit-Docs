@@ -322,7 +322,8 @@ main() {
   # Customize the image
   custom_img_name="$(basename "${img_path%.*}${custom_suffix}.${img_path##*.}")"
   custom_img_path="${storage_path}/${custom_img_name}"
-  virt-customize -a "${temp_img}" \
+  # If the command fails, delete the temporary image and exit
+  if ! virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
     --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
@@ -337,7 +338,11 @@ main() {
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
     --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
     --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment" \
-    --run-command "echo -n > /etc/machine-id"
+    --run-command "echo -n > /etc/machine-id"; then
+    echo "Error: Failed to customize the image."
+    rm -f "${temp_img}"
+    exit 1
+  fi
 
   # Move customized image to storage
   mv "${temp_img}" "${custom_img_path}"
