@@ -19,6 +19,7 @@ usage() {
   echo "  -p, --cipassword CIPASSWORD   Cloud-init password (default: password)"
   echo "  -I, --ipconfig0 IPCONFIG0     IP configuration (default: ip=dhcp)"
   echo "  -T, --tags TAGS               Tags for the VM (default: cloudinit,docker,zfs)"
+  echo "  -g, --gelf-driver ADDRESS     Address for Docker GELF logging driver (default: udp://monitoring-vm.local.panzer1119.de:12201)"
   echo "  -h, --help                    Display this help and exit"
   echo
   echo "Required Options:"
@@ -44,9 +45,10 @@ main() {
   local cipassword="password"
   local ipconfig0="ip=dhcp"
   local tags="cloudinit,docker,zfs"
+  local gelf_driver="udp://monitoring-vm.local.panzer1119.de:12201"
 
   # Parse command-line options
-  while getopts ":v:n:u:s:k:t:i:N:c:d:C:p:I:T:h" opt; do
+  while getopts ":v:n:u:s:k:t:i:N:c:d:C:p:I:T:g:h" opt; do
     case ${opt} in
       v) vm_id="${OPTARG}" ;;
       n) vm_name="${OPTARG}" ;;
@@ -62,6 +64,7 @@ main() {
       p) cipassword="${OPTARG}" ;;
       I) ipconfig0="${OPTARG}" ;;
       T) tags="${OPTARG}" ;;
+      g) gelf_driver="${OPTARG}" ;;
       h) usage ;;
       \?) echo "Invalid option: -${OPTARG}. Use -h for help." >&2; exit 1 ;;
       :) echo "Option -${OPTARG} requires an argument. Use -h for help." >&2; exit 1 ;;
@@ -69,13 +72,8 @@ main() {
   done
 
   # Check for required options
-  if [ -z "${vm_id}" ]; then
-    echo "Error: VM ID (-v, --vm-id) is required."
-    exit 1
-  fi
-
-  if [ -z "${cloud_image}" ]; then
-    echo "Error: Cloud image (-C, --cloud-image) is required."
+  if [ -z "${vm_id}" ] || [ -z "${cloud_image}" ]; then
+    echo "Error: VM ID (-v, --vm-id) and Cloud image (-C, --cloud-image) are required."
     exit 1
   fi
 
@@ -129,10 +127,9 @@ main() {
   sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
   sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${disk_zpool_docker}|g" "${snippets_dir}/${snippet}"
 
-  # TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
-  # TODO Setup portainer agent
-  # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
-  # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
+  # Configure Docker GELF logging driver
+  echo "Configuring Docker GELF logging driver to '${gelf_driver}'..."
+  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
