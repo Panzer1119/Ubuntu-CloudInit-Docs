@@ -18,7 +18,7 @@ usage() {
   echo "  -C, --cloud-image CLOUD_IMAGE  Cloud image file (required)"
   echo "  -p, --cipassword CIPASSWORD    Cloud-init password (default: password)"
   echo "  -I, --ipconfig0 IPCONFIG0      IP configuration (default: ip=dhcp)"
-  echo "                                 Example for static IPv4 with gateway: ip=192.168.1.100::192.168.1.1:255.255.255.0"
+  echo "                                 Example for static IPv4 with gateway: ip=192.168.1.100/24,gw=192.168.1.1"
   echo "  -T, --tags TAGS                Tags for the VM (default: cloudinit,docker,zfs)"
   echo "  -g, --gelf-driver ADDRESS      Address for Docker GELF logging driver (default: udp://monitoring-vm.local.panzer1119.de:12201)"
   echo "  -h, --help                     Display this help and exit"
