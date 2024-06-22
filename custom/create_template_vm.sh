@@ -6,13 +6,14 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  -v, --vm-id VM_ID             VM ID (default: 5002)
+  -v, --vm-id VM_ID             VM ID (required)
+  -n, --vm-name VM_NAME         VM name (default: docker-zfs-template-vm)
   -u, --user USER               User name (default: panzer1119)
   -s, --storage-vm STORAGE_VM   Storage VM name (default: storage-vm)
   -k, --ssh-keys SSH_KEYS       SSH keys path (default: /home/\${USER}/.ssh/authorized_keys)
   -t, --storage STORAGE         Storage name (default: tn-core-1)
   -i, --image-dir IMAGE_DIR     Image directory path (default: /mnt/pve/\${STORAGE}/images)
-  -n, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: /mnt/pve/\${STORAGE}/snippets)
+  -N, --snippets-dir SNIPPETS_DIR  Snippets directory path (default: /mnt/pve/\${STORAGE}/snippets)
   -c, --snippet SNIPPET         Cloud-init snippet file (default: docker+zfs.yaml)
   -d, --disk-zpool-docker DISK_ZPOOL_DOCKER  Docker disk zpool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)
   -h, --help                    Display this help and exit
@@ -22,7 +23,8 @@ EOF
 # Main function
 main() {
     # Default values
-    local vm_id="5002"
+    local vm_id
+    local vm_name="docker-zfs-template-vm"
     local user="panzer1119"
     local storage_vm="storage-vm"
     local ssh_keys="/home/${user}/.ssh/authorized_keys"
@@ -33,15 +35,16 @@ main() {
     local disk_zpool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 
     # Parse command-line options
-    while getopts ":v:u:s:k:t:i:n:c:d:h" opt; do
+    while getopts ":v:n:u:s:k:t:i:N:c:d:h" opt; do
       case ${opt} in
         v) vm_id="${OPTARG}" ;;
+        n) vm_name="${OPTARG}" ;;
         u) user="${OPTARG}" ;;
         s) storage_vm="${OPTARG}" ;;
         k) ssh_keys="${OPTARG}" ;;
         t) storage="${OPTARG}" ;;
         i) image_dir="${OPTARG}" ;;
-        n) snippets_dir="${OPTARG}" ;;
+        N) snippets_dir="${OPTARG}" ;;
         c) snippet="${OPTARG}" ;;
         d) disk_zpool_docker="${OPTARG}" ;;
         h) usage; exit 0 ;;
@@ -51,6 +54,12 @@ main() {
     done
 
     shift $((OPTIND -1))
+
+    # Check if the cloud image option is provided
+    if [ -z "${vm_id}" ]; then
+      echo "Error: VM ID (-v, --vm-id) is required."
+      exit 1
+    fi
 
     # Check if the cloud image exists locally
     local cloud_image="noble-server-cloudimg-amd64.img"
@@ -69,8 +78,8 @@ main() {
     fi
 
     # Create the VM
-    echo "Creating VM '${vm_id}'..."
-    sudo qm create "${vm_id}" --name "ubuntu-docker-zfs-template-vm" --ostype "l26" \
+    echo "Creating VM '${vm_id}' with name '${vm_name}'..."
+    sudo qm create "${vm_id}" --name "${vm_name}" --ostype "l26" \
       --memory "1024" --balloon "0" \
       --agent "1" \
       --bios "ovmf" --machine "q35" --efidisk0 "${storage_vm}:0,pre-enrolled-keys=0" \
@@ -120,5 +129,5 @@ main() {
     sudo qm template "${vm_id}"
 }
 
-# Call the main function
+# Call the main function with all arguments passed to the script
 main "$@"
