@@ -13,58 +13,24 @@ export SNIPPETS_DIR="${7:-/mnt/pve/${STORAGE}/snippets}"
 
 # Constants
 export UBUNTU_RELEASE="noble"
-export UBUNTU_VERSION="current"
 export ARCH="amd64"
-export CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
-export CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
-export IMAGE_RESIZE="8G"
+export DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 export SNIPPET="ubuntu+docker+zfs.yaml"
 export SNIPPET_SRC_PATH="./cloud-config/${SNIPPET}"
-export DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
 
 # Unofficial strict mode
 #set -x
 
-# Get the SHA256SUMS for ubuntu noble cloud images
-echo "Getting SHA256SUMS for Ubuntu ${UBUNTU_RELEASE} ${UBUNTU_VERSION} cloud images..."
-sha256sums=$(wget -qO- "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUNTU_VERSION}/SHA256SUMS")
-
 # Check if the cloud image exists locally
+CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
+CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
+
 if [ -f "${CLOUD_IMAGE_PATH}" ]; then
-  # Get the SHA256 checksum of the remote cloud image
-  echo "Extracting the SHA256 checksum of the remote cloud image '${CLOUD_IMAGE}'..."
-  sha256sum_remote=$(echo "${sha256sums}" | grep "${CLOUD_IMAGE}" | awk '{print $1}')
-  # Calculate the SHA256 checksum of the local cloud image
-  echo "Calculating the SHA256 checksum of the local cloud image '${CLOUD_IMAGE}'..."
-  sha256sum_local=$(sha256sum "${CLOUD_IMAGE_PATH}" | awk '{print $1}')
-  # Delete the cloud image if the checksums do not match
-  if [ "${sha256sum_local}" != "${sha256sum_remote}" ]; then
-    # Check if image size is IMAGE_RESIZE, so we can skip the download (convert IMAGE_RESIZE to bytes)
-    image_resize_bytes=$(echo "${IMAGE_RESIZE}" | numfmt --from=iec)
-    echo "SHA256 checksums do not match."
-    #FIXME If the current noble image is updated to a new version, the checksum will not match, but will never be pulled again because of this
-    if [ "$(qemu-img info --output json "${CLOUD_IMAGE_PATH}" | jq -r '.["virtual-size"]')" == "${image_resize_bytes}" ]; then
-      echo "The local cloud image '${CLOUD_IMAGE}' is already resized to ${IMAGE_RESIZE}."
-    else
-      echo "Deleting the local cloud image '${CLOUD_IMAGE}'..."
-      rm -f "${CLOUD_IMAGE_PATH}"
-    fi
-  else
-    echo "SHA256 checksums match. The local cloud image '${CLOUD_IMAGE}' is up-to-date."
-  fi
+  echo "Using existing cloud image '${CLOUD_IMAGE}' at '${CLOUD_IMAGE_PATH}'."
 else
-  echo "The local cloud image '${CLOUD_IMAGE}' does not exist."
+  echo "Error: Cloud image '${CLOUD_IMAGE}' not found at '${CLOUD_IMAGE_PATH}'. Exiting."
+  exit 1
 fi
-
-# Download the cloud image if not found locally
-if [ ! -f "${CLOUD_IMAGE_PATH}" ]; then
-  echo "Downloading the Ubuntu ${UBUNTU_RELEASE} ${UBUNTU_VERSION} cloud image '${CLOUD_IMAGE}'..."
-  wget -qO "${CLOUD_IMAGE_PATH}" "https://cloud-images.ubuntu.com/${UBUNTU_RELEASE}/${UBUNTU_VERSION}/${CLOUD_IMAGE}"
-fi
-
-# Resize the cloud image
-echo "Resizing the cloud image '${CLOUD_IMAGE}' to ${IMAGE_RESIZE}..."
-qemu-img resize "${CLOUD_IMAGE_PATH}" "${IMAGE_RESIZE}"
 
 # Check if the VM exists with qm and delete if so
 if sudo qm list | grep -q "${VM_ID}"; then
@@ -111,11 +77,6 @@ sudo sed -i "s|{{USER}}|${USER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{ARCH}}|${ARCH}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{UBUNTU_RELEASE}}|${UBUNTU_RELEASE}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${DISK_ZPOOL_DOCKER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
-
-#TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
-#TODO Setup portainer agent
-#TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
-#TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
