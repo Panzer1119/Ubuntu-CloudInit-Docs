@@ -22,7 +22,7 @@ usage() {
   echo "  --influx-url    InfluxDB URL (default: http://monitoring-vm.local.panzer1119.de:8086)"
   echo "  --influx-org    InfluxDB organization (default: Homelab)"
   echo "  --influx-bucket InfluxDB bucket (default: Telegraf)"
-  echo "  --influx-token  InfluxDB token (required)"
+  echo "  --influx-token  InfluxDB token (optional)"
   echo "  -h, --help      Display this help message"
   exit 1
 }
@@ -146,12 +146,6 @@ main() {
     esac
   done
 
-  # Validate required options
-  if [ -z "${influx_token}" ]; then
-    echo "Error: --influx-token is required."
-    exit 1
-  fi
-
   # Check for required packages
   check_requirements
 
@@ -226,40 +220,28 @@ main() {
   temp_img="/tmp/$(basename ${img_path})"
   cp "${img_path}" "${temp_img}"
 
-  # Prepare the telegraf configuration file
-  local telegraf_conf="/tmp/telegraf.conf"
-  cat <<EOF > "${telegraf_conf}"
-# Global Agent Configuration
-[agent]
-  interval = "10s"
-  round_interval = true
-
-# Output Configuration
-[[outputs.influxdb_v2]]
-  urls = ["\${INFLUX_URL}"]
-  token = "\${INFLUX_TOKEN}"
-  organization = "\${INFLUX_ORG}"
-  bucket = "\${INFLUX_BUCKET}"
-
-# Input Plugins
-[[inputs.cpu]]
-  percpu = true
-  totalcpu = true
-  collect_cpu_time = false
-  report_active = false
-EOF
+  # Verify telegraf configuration file exists
+  if [ ! -f "telegraf.conf" ]; then
+    echo "Error: telegraf.conf file not found."
+    exit 1
+  fi
 
   # Customize the image
   custom_img_name="$(basename ${img_path} .img)${custom_suffix}.img"
   custom_img_path="${storage_path}/${custom_img_name}"
   virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,telegraf \
-    --copy-in "${telegraf_conf}:/etc/telegraf/telegraf.conf" \
+    --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
     --run-command "usermod -aG docker ${user}" \
     --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
     --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
+    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment"
+
+  # Optionally set the InfluxDB token
+  if [ -n "${influx_token}" ]; then
+    virt-customize -a "${temp_img}" \
+      --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment"
+  fi
 
   # Move customized image to storage
   mv "${temp_img}" "${custom_img_path}"
