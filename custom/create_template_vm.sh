@@ -12,17 +12,15 @@ export IMAGE_DIR="${6:-/mnt/pve/${STORAGE}/images}"
 export SNIPPETS_DIR="${7:-/mnt/pve/${STORAGE}/snippets}"
 
 # Constants
-export UBUNTU_RELEASE="noble"
-export ARCH="amd64"
 export DISK_ZPOOL_DOCKER="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
-export SNIPPET="ubuntu+docker+zfs.yaml"
+export SNIPPET="docker+zfs.yaml"
 export SNIPPET_SRC_PATH="./cloud-config/${SNIPPET}"
 
 # Unofficial strict mode
 #set -x
 
 # Check if the cloud image exists locally
-CLOUD_IMAGE="${UBUNTU_RELEASE}-server-cloudimg-${ARCH}.img"
+CLOUD_IMAGE="noble-server-cloudimg-amd64.img"
 CLOUD_IMAGE_PATH="${IMAGE_DIR}/${CLOUD_IMAGE}"
 
 if [ -f "${CLOUD_IMAGE_PATH}" ]; then
@@ -43,7 +41,7 @@ fi
 
 # Create the VM
 echo "Creating VM '${VM_ID}'..."
-sudo qm create "${VM_ID}" --name "ubuntu-${UBUNTU_RELEASE}-docker-zfs-template-vm" --ostype "l26" \
+sudo qm create "${VM_ID}" --name "ubuntu-docker-zfs-template-vm" --ostype "l26" \
   --memory "1024" --balloon "0" \
   --agent "1" \
   --bios "ovmf" --machine "q35" --efidisk0 "${STORAGE_VM}:0,pre-enrolled-keys=0" \
@@ -74,9 +72,12 @@ sudo cp -f "${SNIPPET_SRC_PATH}" "${SNIPPETS_DIR}/${SNIPPET}"
 # Replace variables in the cloud-init configuration
 echo "Replacing variables in the cloud-init configuration '${SNIPPETS_DIR}/${SNIPPET}'..."
 sudo sed -i "s|{{USER}}|${USER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
-sudo sed -i "s|{{ARCH}}|${ARCH}|g" "${SNIPPETS_DIR}/${SNIPPET}"
-sudo sed -i "s|{{UBUNTU_RELEASE}}|${UBUNTU_RELEASE}|g" "${SNIPPETS_DIR}/${SNIPPET}"
 sudo sed -i "s|{{DISK_ZPOOL_DOCKER}}|${DISK_ZPOOL_DOCKER}|g" "${SNIPPETS_DIR}/${SNIPPET}"
+
+# TODO Setup /etc/docker/daemon.json to use Graylog GELF logging driver
+# TODO Setup portainer agent
+# TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
+# TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
 
 # Set the VM options
 echo "Setting the VM options for VM '${VM_ID}'..."
