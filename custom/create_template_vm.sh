@@ -28,6 +28,7 @@ usage() {
   echo "  -C, --cloud-image CLOUD_IMAGE"
   exit 1
 }
+#FIXME the long options are not working
 
 # Function to derive image directory based on Proxmox storage
 derive_images_dir() {
