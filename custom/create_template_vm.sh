@@ -265,9 +265,10 @@ main() {
   # TODO Setup portainer agent
   # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
 
-  # Configure Docker GELF logging driver
-  echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
-  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"${gelf_driver}"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
+#FIXME Use jq to edit the file and rename gelf_driver to gelf_driver_address
+#   # Configure Docker GELF logging driver
+#   echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
+#   echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"${gelf_driver}"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
