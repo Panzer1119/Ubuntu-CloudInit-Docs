@@ -168,6 +168,12 @@ main() {
   local tags="cloudinit,docker,zfs"
   local gelf_driver="udp://monitoring-vm.local.panzer1119.de:12201"
 
+  # Check for sudo/root permissions
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run with sudo or as root."
+    exit 1
+  fi
+
   # Parse command-line options
   while getopts ":v:n:u:s:k:t:i:N:c:d:D:L:S:V:C:p:I:T:g:h" opt; do
     case ${opt} in

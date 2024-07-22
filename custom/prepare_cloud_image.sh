@@ -113,6 +113,12 @@ main() {
   local influx_bucket="Telegraf"
   local influx_token=""
 
+  # Check for sudo/root permissions
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run with sudo or as root."
+    exit 1
+  fi
+
   # Parse options
   while [[ $# -gt 0 ]]; do
     case $1 in
