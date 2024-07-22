@@ -11,7 +11,7 @@ usage() {
   echo "  -s, --storage-vm STORAGE_VM     Storage VM name (default: storage-vm)"
   echo "  -k, --ssh-keys SSH_KEYS         SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
   echo "  -t, --storage STORAGE           Storage name (default: tn-core-1)"
-  echo "  -i, --images-dir IMAGES_DIR     Images directory path (default: derived from STORAGE)"
+  echo "  -i, --iso-dir ISO_DIR           ISO directory path (default: derived from STORAGE)"
   echo "  -N, --snippets-dir SNIPPETS_DIR Snippets directory path (default: derived from STORAGE)"
   echo "  -c, --snippet SNIPPET           Cloud-init snippet file (default: docker+zfs.yaml)"
   echo "  -d, --zfs-pool-docker-name ZFS_POOL_DOCKER_NAME Name for the docker ZFS pool (default: docker)"
@@ -34,48 +34,114 @@ usage() {
 }
 #FIXME the long options are not working
 
-# Function to derive image directory based on Proxmox storage
-derive_images_dir() {
-  local storage="$1"
+# Function to derive storage mountpoint based on Proxmox storage
+derive_storage_mountpoint() {
+    local storage="${1}"
+    local iso_dir="${2}"
+    local snippets_dir="${3}"
+    local volume_id=""
+    local mountpoint=""
 
-  #FIXME This does not work
+    # If storage is empty, ignore this and skip it gracefully
+    if [ -z "${storage}" ]; then
+        echo ""
+        exit 0
+    fi
 
-  # Get storage mount point
-  local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
+    # If both iso and snippets directories are specified, ignore this and skip it gracefully
+    if [ -n "${iso_dir}" ] && [ -n "${snippets_dir}" ]; then
+        echo ""
+        exit 0
+    fi
 
-  # Check if the storage is enabled for images
-  local image_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<images\>' && echo "yes" || echo "no")
+    # Check if the storage supports content types 'iso' and 'snippets'
+    local content_types=('iso' 'snippets')
+    for content_type in "${content_types[@]}"; do
+        if ! pvesm status --enabled --storage "${storage}" --content "${content_type}" &>/dev/null; then
+            # If content type is not enabled, but the corresponding directory is specified, continue without an error
+            if [ "${content_type}" == 'iso' ] && [ -n "${iso_dir}" ]; then
+                continue
+            fi
+            if [ "${content_type}" == 'snippets' ] && [ -n "${snippets_dir}" ]; then
+                continue
+            fi
+            echo "Error: Storage '${storage}' must be enabled for content type '${content_type}'."
+            exit 1
+        fi
+    done
 
-  # Check if storage is enabled for images
-  if [ "$image_enabled" != "yes" ]; then
-    echo "Error: Storage '$storage' must be enabled for 'images'."
-    exit 1
-  fi
+    # List all iso and snippets content (cut the first line with the header)
+    local content_iso=$(pvesm list "${storage}" --content 'iso' | tail -n +2)
+    local content_snippets=$(pvesm list "${storage}" --content 'snippets' | tail -n +2)
 
-  # Derive image directory
-  echo "${mountpoint}/images"
+    # Check if no iso or snippets content is available
+    if [ -z "${content_iso}" ] || [ -z "${content_snippets}" ]; then
+        echo "Error: Storage '${storage}' must have at least one ISO and one snippets content to derive the mount point."
+        exit 1
+    fi
+
+    # If iso content is available, get the volume id of the first ISO
+    if [ -n "${content_iso}" ]; then
+        volume_id=$(echo "${content_iso}" | head -n 1 | awk '{print $1}')
+    else
+        volume_id=$(echo "${content_snippets}" | head -n 1 | awk '{print $1}')
+    fi
+
+    # Get the path of the volume
+    mountpoint=$(pvesm path "${volume_id}")
+
+    # Cut the last part of the path (volume id)
+    mountpoint=$(dirname "${mountpoint}")
+
+    # Cut the last part of the path (content type)
+    mountpoint=$(dirname "${mountpoint}")
+
+    # Check if mountpoint exists
+    if [ ! -d "${mountpoint}" ]; then
+        echo "Error: Mount point '${mountpoint}' does not exist."
+        exit 1
+    fi
+
+    # Return storage mount point
+    echo "${mountpoint}"
+}
+
+# Function to derive iso directory based on Proxmox storage
+derive_iso_dir() {
+    local storage="${1}"
+    local mountpoint="${2}"
+    local iso_dir=""
+
+    # Derive ISO directory
+    iso_dir="${mountpoint}/iso"
+
+    # Check if ISO directory exists
+    if [ ! -d "${iso_dir}" ]; then
+        echo "Error: ISO directory '${iso_dir}' does not exist."
+        exit 1
+    fi
+
+    # Return ISO directory
+    echo "${iso_dir}"
 }
 
 # Function to derive snippets directory based on Proxmox storage
 derive_snippets_dir() {
-  local storage="$1"
+    local storage="${1}"
+    local mountpoint="${2}"
+    local snippets_dir=""
 
-  #FIXME This does not work
+    # Derive snippets directory
+    snippets_dir="${mountpoint}/snippets"
 
-  # Get storage mount point
-  local mountpoint=$(pvesm status -storage "$storage" --output 'mountpoint')
+    # Check if snippets directory exists
+    if [ ! -d "${snippets_dir}" ]; then
+        echo "Error: Snippets directory '${snippets_dir}' does not exist."
+        exit 1
+    fi
 
-  # Check if the storage is enabled for snippets
-  local snippets_enabled=$(pvesm status -storage "$storage" --output 'content' | grep -q '\<snippets\>' && echo "yes" || echo "no")
-
-  # Check if storage is enabled for snippets
-  if [ "$snippets_enabled" != "yes" ]; then
-    echo "Error: Storage '$storage' must be enabled for 'snippets'."
-    exit 1
-  fi
-
-  # Derive snippets directory
-  echo "${mountpoint}/snippets"
+    # Return snippets directory
+    echo "${snippets_dir}"
 }
 
 # Main function
@@ -87,7 +153,8 @@ main() {
   local storage_vm="storage-vm"
   local ssh_keys="/home/${user}/.ssh/authorized_keys"
   local storage="tn-core-1"
-  local images_dir=""
+  local storage_mountpoint=""
+  local iso_dir=""
   local snippets_dir=""
   local snippet="docker+zfs.yaml"
   local zfs_pool_docker_name="docker"
@@ -110,7 +177,7 @@ main() {
       s) storage_vm="${OPTARG}" ;;
       k) ssh_keys="${OPTARG}" ;;
       t) storage="${OPTARG}" ;;
-      i) images_dir="${OPTARG}" ;;
+      i) iso_dir="${OPTARG}" ;;
       N) snippets_dir="${OPTARG}" ;;
       c) snippet="${OPTARG}" ;;
       d) zfs_pool_docker_name="${OPTARG}" ;;
@@ -135,18 +202,21 @@ main() {
     exit 1
   fi
 
+  # Derive storage mountpoint
+  storage_mountpoint=$(derive_storage_mountpoint "${storage}" "${iso_dir}" "${snippets_dir}")
+
   # Derive image directory if not specified
-  if [ -z "${images_dir}" ]; then
-    images_dir=$(derive_images_dir "${storage}")
+  if [ -z "${iso_dir}" ]; then
+    iso_dir=$(derive_iso_dir "${storage}" "${storage_mountpoint}")
   fi
 
   # Derive snippets directory if not specified
   if [ -z "${snippets_dir}" ]; then
-    snippets_dir=$(derive_snippets_dir "${storage}")
+    snippets_dir=$(derive_snippets_dir "${storage}" "${storage_mountpoint}")
   fi
 
   # Check if the cloud image exists locally
-  local cloud_image_path="${images_dir}/${cloud_image}"
+  local cloud_image_path="${iso_dir}/${cloud_image}"
   if [ ! -f "${cloud_image_path}" ]; then
     echo "Error: Cloud image '${cloud_image}' not found at '${cloud_image_path}'. Exiting."
     exit 1
