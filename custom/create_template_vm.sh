@@ -34,6 +34,19 @@ usage() {
 }
 #FIXME the long options are not working
 
+# Check for required packages
+check_requirements() {
+  local commands=("pvesh" "jq" "qm" "sed" "sudo")
+  local command
+  # Check that they are installed
+  for command in "${commands[@]}"; do
+    if ! command -v "${command}" &> /dev/null; then
+      echo "Error: Command ${command} not found. Please install it first."
+      exit 1
+    fi
+  done
+}
+
 # Function to derive storage mountpoint based on Proxmox storage
 derive_storage_mountpoint() {
     local storage_id="${1}"
@@ -142,6 +155,9 @@ main() {
     echo "Error: This script must be run with sudo or as root."
     exit 1
   fi
+
+  # Check for required packages
+  check_requirements
 
   # Parse command-line options
   while getopts ":v:n:u:s:k:t:i:N:c:d:D:L:S:V:C:p:I:T:g:h" opt; do
