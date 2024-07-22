@@ -119,6 +119,9 @@ main() {
     exit 1
   fi
 
+  # Check for required packages
+  check_requirements
+
   # Parse options
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -195,9 +198,6 @@ main() {
         ;;
     esac
   done
-
-  # Check for required packages
-  check_requirements
 
   # Check Proxmox storage
   local storage_path
