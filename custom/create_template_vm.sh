@@ -33,7 +33,6 @@ usage() {
   echo "  -C, --cloud-image CLOUD_IMAGE"
   exit 1
 }
-#FIXME the long options are not working
 
 # Check for required packages
 check_requirements() {
@@ -173,8 +172,34 @@ main() {
   check_requirements
 
   # Parse command-line options
-  while getopts ":v:N:u:s:k:t:i:e:c:d:D:L:S:V:C:p:I:T:g:hn" opt; do
+  while getopts ":v:N:u:s:k:t:i:e:c:d:D:L:S:V:C:p:I:T:g:hn-:" opt; do
     case ${opt} in
+      -)
+        case "${OPTARG}" in
+          vm-id) vm_id="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          vm-name) vm_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          user) user="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          storage-vm) storage_vm="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          ssh-keys) ssh_keys="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          storage) storage_id="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          iso-dir) iso_dir="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          snippets-dir) snippets_dir="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          snippet) snippet="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          zfs-pool-docker-name) zfs_pool_docker_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          zfs-pool-docker-disk) zfs_pool_docker_disk="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          docker-var-lib-zfs-dataset-name) docker_var_lib_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          docker-storage-driver-zfs-dataset-name) docker_storage_driver_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          docker-volume-plugin-zfs-dataset-name) docker_volume_plugin_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          cloud-image) cloud_image="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          cipassword) cipassword="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          ipconfig0) ipconfig0="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          tags) tags="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          gelf-driver) gelf_driver="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          help) usage ;;
+          dry-run) dry_run=true ;;
+          *) echo "Invalid option: --${OPTARG}. Use -h for help." >&2; exit 1 ;;
+        esac
+        ;;
       v) vm_id="${OPTARG}" ;;
       N) vm_name="${OPTARG}" ;;
       u) user="${OPTARG}" ;;
