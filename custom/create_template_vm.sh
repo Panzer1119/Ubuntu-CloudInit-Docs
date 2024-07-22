@@ -201,6 +201,10 @@ main() {
   sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
 
   echo "VM creation and configuration completed successfully."
+
+  # Convert the VM to a template
+  sudo qm template "${vm_id}"
+  echo "VM '${vm_id}' converted to a template."
 }
 
 # Run main function with command-line arguments
