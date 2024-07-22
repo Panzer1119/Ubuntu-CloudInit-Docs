@@ -108,7 +108,7 @@ derive_iso_dir() {
     local iso_dir=""
 
     # Derive ISO directory
-    iso_dir="${mountpoint}/iso"
+    iso_dir="${mountpoint}/template/iso"
 
     # Check if ISO directory exists
     if [ ! -d "${iso_dir}" ]; then
