@@ -3,22 +3,38 @@
 runcmd:
   # Stop the docker service
   - systemctl stop docker
-  # Copy the contents of /var/lib/docker/ to /var/lib/docker.bk
-  - cp -au /var/lib/docker /var/lib/docker.bk
-  # Remove the contents of /var/lib/docker/
-  - rm -rf /var/lib/docker/*
-  # Create the zfs pool named "docker" mounted at /var/lib/docker
-  - zpool create -f docker -m /var/lib/docker {{DISK_ZFS_POOL_DOCKER}}
+  # Backup the contents of /var/lib/docker/ to /var/lib/docker.bk/ or fail the build
+  - cp -au /var/lib/docker /var/lib/docker.bk || exit 1
+  # Remove the contents of /var/lib/docker/ or fail the build
+  - rm -rf /var/lib/docker/* || exit 1
+  # Create the zfs pool
+  - zpool create -f "{{ZFS_POOL_DOCKER_NAME}}" "{{ZFS_POOL_DOCKER_DISK}}"
+  # Create the docker var lib zfs dataset
+  - zfs create -u "{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}"
+  # Set the mountpoint for the docker var lib zfs dataset
+  - zfs set mountpoint=/var/lib/docker "{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}"
+  # Create the docker storage driver zfs dataset
+  - zfs create -u "{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}"
+  # Disable the mountpoint for the docker storage driver zfs dataset
+  - zfs set mountpoint=none "{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}"
+  # Create the docker volume plugin zfs dataset
+  - zfs create "{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}"
+  # Mount all zfs datasets
+  - zfs mount -a
+  # Restore the contents of /var/lib/docker.bk/ to /var/lib/docker/ or fail the build
+  - cp -au /var/lib/docker.bk/* /var/lib/docker/ || exit 1
+  # Remove the backup of /var/lib/docker/ or fail the build
+  - rm -rf /var/lib/docker.bk || exit 1
   # If /etc/docker/daemon.json does not exist write { "storage-driver": "zfs", "storage-opts": [] } to it using jq
   - "test -f /etc/docker/daemon.json || echo '{ \"storage-driver\": \"zfs\", \"storage-opts\": [] }' | jq > /etc/docker/daemon.json"
-  # Set "storage-driver" to "zfs" in /etc/docker/daemon.json and "storage-opts" to [] using jq and a temporary file
-  - "jq '. + { \"storage-driver\": \"zfs\", \"storage-opts\": [] }' /etc/docker/daemon.json > /tmp/daemon.json && mv /tmp/daemon.json /etc/docker/daemon.json"
+  # Set "storage-driver" to "zfs" in /etc/docker/daemon.json and "storage-opts" to [ "zfs.fsname": "pool/dataset_name" ] using jq and a temporary file
+  - "jq '. + { \"storage-driver\": \"zfs\", \"storage-opts\": [ \"zfs.fsname\": \"{{ZFS_POOL_DOCKER_NAME}}/{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}\" ] }' /etc/docker/daemon.json > /tmp/daemon.json && mv /tmp/daemon.json /etc/docker/daemon.json"
   # Start the docker service
   - systemctl start docker
   # Confirm docker is using the zfs storage driver, if not fail the build
   - docker info --format '{{.Driver}}' | grep -q zfs || exit 1
   # Add user to group docker
-  - usermod -aG docker {{USER}}
+  - usermod -aG docker "{{USER}}"
   # Enable the ssh service
   - systemctl enable ssh
   # Reboot the VM

@@ -14,7 +14,11 @@ usage() {
   echo "  -i, --images-dir IMAGES_DIR     Images directory path (default: derived from STORAGE)"
   echo "  -N, --snippets-dir SNIPPETS_DIR Snippets directory path (default: derived from STORAGE)"
   echo "  -c, --snippet SNIPPET           Cloud-init snippet file (default: docker+zfs.yaml)"
-  echo "  -d, --disk-zfs-pool-docker DISK_ZFS_POOL_DOCKER  Docker ZFS pool disk (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
+  echo "  -d, --zfs-pool-docker-name ZFS_POOL_DOCKER_NAME Name for the docker ZFS pool (default: docker)"
+  echo "  -D, --zfs-pool-docker-disk ZFS_POOL_DOCKER_DISK Disk for the docker ZFS pool (default: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0)"
+  echo "  -L, --docker-var-lib-zfs-dataset-name        DOCKER_VAR_LIB_ZFS_DATASET_NAME        Name for the docker var lib ZFS dataset (default: state)"
+  echo "  -S, --docker-storage-driver-zfs-dataset-name DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME Name for the docker storage driver ZFS dataset (default: layers)"
+  echo "  -V, --docker-volume-plugin-zfs-dataset-name  DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME  Name for the docker volume plugin ZFS dataset  (default: volumes)"
   echo "  -C, --cloud-image CLOUD_IMAGE   Cloud image file (required)"
   echo "  -p, --cipassword CIPASSWORD     Cloud-init password (default: password)"
   echo "  -I, --ipconfig0 IPCONFIG0       IP configuration (default: ip=dhcp)"
@@ -86,7 +90,11 @@ main() {
   local images_dir=""
   local snippets_dir=""
   local snippet="docker+zfs.yaml"
-  local disk_zfs_pool_docker="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
+  local zfs_pool_docker_name="docker"
+  local zfs_pool_docker_disk="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0"
+  local docker_var_lib_zfs_dataset_name="state"
+  local docker_storage_driver_zfs_dataset_name="layers"
+  local docker_volume_plugin_zfs_dataset_name="volumes"
   local cloud_image=""
   local cipassword="password"
   local ipconfig0="ip=dhcp"
@@ -94,7 +102,7 @@ main() {
   local gelf_driver="udp://monitoring-vm.local.panzer1119.de:12201"
 
   # Parse command-line options
-  while getopts ":v:n:u:s:k:t:i:N:c:d:C:p:I:T:g:h" opt; do
+  while getopts ":v:n:u:s:k:t:i:N:c:d:D:L:S:V:C:p:I:T:g:h" opt; do
     case ${opt} in
       v) vm_id="${OPTARG}" ;;
       n) vm_name="${OPTARG}" ;;
@@ -105,7 +113,11 @@ main() {
       i) images_dir="${OPTARG}" ;;
       N) snippets_dir="${OPTARG}" ;;
       c) snippet="${OPTARG}" ;;
-      d) disk_zfs_pool_docker="${OPTARG}" ;;
+      d) zfs_pool_docker_name="${OPTARG}" ;;
+      D) zfs_pool_docker_disk="${OPTARG}" ;;
+      L) docker_var_lib_zfs_dataset_name="${OPTARG}" ;;
+      S) docker_storage_driver_zfs_dataset_name="${OPTARG}" ;;
+      V) docker_volume_plugin_zfs_dataset_name="${OPTARG}" ;;
       C) cloud_image="${OPTARG}" ;;
       p) cipassword="${OPTARG}" ;;
       I) ipconfig0="${OPTARG}" ;;
@@ -181,11 +193,14 @@ main() {
   # Replace variables in the cloud-init configuration
   echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
   sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{DISK_ZFS_POOL_DOCKER}}|${disk_zfs_pool_docker}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{ZFS_POOL_DOCKER_NAME}}|${zfs_pool_docker_name}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{ZFS_POOL_DOCKER_DISK}}|${zfs_pool_docker_disk}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}|${docker_var_lib_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}|${docker_storage_driver_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+  sudo sed -i "s|{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}|${docker_volume_plugin_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
 
   # TODO Setup portainer agent
   # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
-  # TODO Setup docker zfs storage driver (and docker zfs plugin for volumes)
 
   # Configure Docker GELF logging driver
   echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
