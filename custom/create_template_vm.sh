@@ -2,7 +2,7 @@
 
 # Function to print usage information
 usage() {
-  echo "Usage: $(basename "$0") [OPTIONS]"
+  echo "Usage: $(basename "${0}") [OPTIONS]"
   echo
   echo "Options:"
   echo "  -v, --vm-id VM_ID               VM ID (required)"
@@ -274,7 +274,7 @@ main() {
 
   # Configure Docker GELF logging driver
   echo "Configuring Docker GELF logging driver to use '${gelf_driver}'..."
-  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"$gelf_driver"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
+  echo '{ "log-driver": "gelf", "log-opts": { "gelf-address": "'"${gelf_driver}"'" } }' | sudo tee /etc/docker/daemon.json >/dev/null
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
