@@ -67,7 +67,8 @@ check_proxmox_storage() {
   fi
 
   # Check if storage is enabled for images and ISOs
-  content_images_enabled=$(echo "${storage_info}" | jq -e '.content | index("images")' &> /dev/null && echo "yes" || echo "no")
+#   content_images_enabled=$(echo "${storage_info}" | jq -e '.content | index("images")' &> /dev/null && echo "yes" || echo "no")
+  content_images_enabled="no"
   content_iso_enabled=$(echo "${storage_info}" | jq -e '.content | index("iso")' &> /dev/null && echo "yes" || echo "no")
 
   # Get storage path
