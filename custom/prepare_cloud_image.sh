@@ -35,6 +35,7 @@ usage() {
   echo "  --influx-org       InfluxDB organization (default: Homelab)"
   echo "  --influx-bucket    InfluxDB bucket (default: Telegraf)"
   echo "  --influx-token     InfluxDB token (optional)"
+  echo "  --dry-run          Show what would be done without making any changes"
   echo "  -h, --help         Display this help message"
   exit 1
 }
@@ -109,6 +110,7 @@ main() {
   local user="panzer1119"
   local storage="tn-core-1"
   local force_download=false
+  local dry_run=false
   local custom_suffix="-custom-docker"
   local image_name=""
   local sha256_hash=""
@@ -194,6 +196,10 @@ main() {
         influx_token="$2"
         shift 2
         ;;
+      --dry-run)
+        dry_run=true
+        shift
+        ;;
       -h|--help)
         usage
         ;;
@@ -203,6 +209,15 @@ main() {
         ;;
     esac
   done
+
+  # Function to execute a command or print it if dry run
+  run_command() {
+    if [ "${dry_run}" = true ]; then
+      echo "[DRY-RUN] $*"
+    else
+      eval "$@"
+    fi
+  }
 
   # Check Proxmox storage
   local storage_path
@@ -275,7 +290,7 @@ main() {
 
     # Download the checksum file if SHA256 and SHA512 hash is not provided
     if [ -z "${sha256_hash}" ] && [ -z "${sha512_hash}" ]; then
-      wget -O "${checksum_file}" "${checksum_url}"
+      run_command wget -O "${checksum_file}" "${checksum_url}"
       # Get the expected checksum for distros Debian and Ubuntu
       if [ "${distro}" == "debian" ] || [ "${distro}" == "ubuntu" ]; then
         expected_checksum=$(grep $(basename ${img_url}) ${checksum_file} | awk '{ print $1 }')
@@ -287,7 +302,7 @@ main() {
       fi
       # Delete the checksum file if it was downloaded
       if [ -f "${checksum_file}" ]; then
-        rm -f "${checksum_file}"
+        run_command rm -f "${checksum_file}"
       fi
     else
       # Select the expected checksum based on the distro
@@ -307,7 +322,7 @@ main() {
 
     if [ "${force_download}" = true ]; then
       echo "Forcing download of the image."
-      wget -O "${img_path}" "${img_url}"
+      run_command wget -O "${img_path}" "${img_url}"
     else
       if [ -f "${img_path}" ]; then
         echo "Image already exists in storage. Checking hash..."
@@ -316,17 +331,17 @@ main() {
           echo "Image checksum matches. Using existing image."
         else
           echo "Image checksum does not match. Downloading new image."
-          wget -O "${img_path}" "${img_url}"
+          run_command wget -O "${img_path}" "${img_url}"
         fi
       else
-        wget -O "${img_path}" "${img_url}"
+        run_command wget -O "${img_path}" "${img_url}"
       fi
     fi
   fi
 
   # Copy image to temporary folder for customization
   temp_img="/tmp/${img_name}"
-  cp "${img_path}" "${temp_img}"
+  run_command cp "${img_path}" "${temp_img}"
 
   # Verify telegraf configuration file exists
   if [ ! -f "telegraf.conf" ]; then
@@ -338,7 +353,7 @@ main() {
   custom_img_name="$(basename "${img_path%.*}${custom_suffix}.${img_path##*.}")"
   custom_img_path="${storage_path}/${custom_img_name}"
   # If the command fails, delete the temporary image and exit
-  if ! virt-customize -a "${temp_img}" \
+  if ! run_command virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
     --run-command "sh get-docker.sh" \
@@ -354,12 +369,12 @@ main() {
     --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment" \
     --run-command "echo -n > /etc/machine-id"; then
     echo "Error: Failed to customize the image."
-    rm -f "${temp_img}"
+    run_command rm -f "${temp_img}"
     exit 1
   fi
 
   # Move customized image to storage
-  mv "${temp_img}" "${custom_img_path}"
+  run_command mv "${temp_img}" "${custom_img_path}"
   echo "Customized image saved to ${custom_img_path}"
 }
 
