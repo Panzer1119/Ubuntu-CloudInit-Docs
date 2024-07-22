@@ -26,7 +26,7 @@ usage() {
   echo "  -T, --tags TAGS                 Tags for the VM (default: cloudinit,docker,zfs)"
   echo "  -g, --gelf-driver ADDRESS       Address for Docker GELF logging driver (default: udp://monitoring-vm.local.panzer1119.de:12201)"
   echo "  -h, --help                      Display this help and exit"
-  echo "  -n, --dry-run                       Print the commands without executing them"
+  echo "  -n, --dry-run                   Print the commands without executing them"
   echo
   echo "Required Options:"
   echo "  -v, --vm-id VM_ID"
@@ -49,14 +49,13 @@ check_requirements() {
 
 dry_run=false
 
-# Function to print or execute commands based on dry-run flag
-run_cmd() {
-  local cmd="$*"
-  if [ "${dry_run}" = true ]; then
-    echo "Dry-run: ${cmd}"
-  else
-    eval "${cmd}"
-  fi
+# Function to execute a command or print it if dry run
+run_command() {
+    if [ "${dry_run}" = true ]; then
+        echo "[DRY-RUN] $*"
+    else
+        eval "$@"
+    fi
 }
 
 # Function to derive storage mountpoint based on Proxmox storage
@@ -68,7 +67,7 @@ derive_storage_mountpoint() {
     local mountpoint=""
 
     # Get storage info from Proxmox API and store it in a variable
-    if ! storage_info=$(run_cmd "sudo pvesh get \"/storage/${storage_id}\" --output-format json"); then
+    if ! storage_info=$(run_command sudo pvesh get "/storage/${storage_id}" --output-format json); then
         echo "Error: Storage '${storage_id}' does not exist."
         exit 1
     fi
@@ -258,42 +257,42 @@ main() {
   if sudo qm list | grep -q "${vm_id}"; then
     # Destroy the VM if it exists
     echo "Destroying existing VM '${vm_id}'..."
-    run_cmd "sudo qm destroy \"${vm_id}\""
+    run_command sudo qm destroy "${vm_id}"
   fi
 
   # Create the VM
   echo "Creating VM '${vm_id}' with name '${vm_name}'..."
-  run_cmd "sudo qm create \"${vm_id}\" --name \"${vm_name}\" --ostype l26 --memory 1024 --balloon 0 --agent 1 --bios ovmf --machine q35 --efidisk0 \"${storage_vm}:0,pre-enrolled-keys=0\" --cpu host --cores 1 --numa 1 --vga serial0 --serial0 socket --net0 virtio,bridge=vmbr0,mtu=1"
+  run_command sudo qm create "${vm_id}" --name "${vm_name}" --ostype l26 --memory 1024 --balloon 0 --agent 1 --bios ovmf --machine q35 --efidisk0 "${storage_vm}:0,pre-enrolled-keys=0" --cpu host --cores 1 --numa 1 --vga serial0 --serial0 socket --net0 virtio,bridge=vmbr0,mtu=1
 
   # Import the cloud image
   echo "Importing the cloud image '${cloud_image}' to VM '${vm_id}' storage '${storage_vm}'..."
-  run_cmd "sudo qm importdisk \"${vm_id}\" \"${cloud_image_path}\" \"${storage_vm}\""
+  run_command sudo qm importdisk "${vm_id}" "${cloud_image_path}" "${storage_vm}"
 
   # Attach the cloud image
   echo "Attaching the cloud image '${cloud_image}' to VM '${vm_id}' as disk 1..."
-  run_cmd "sudo qm set \"${vm_id}\" --scsihw virtio-scsi-pci --virtio0 \"${storage_vm}:vm-${vm_id}-disk-1,discard=on\""
+  run_command sudo qm set "${vm_id}" --scsihw virtio-scsi-pci --virtio0 "${storage_vm}:vm-${vm_id}-disk-1,discard=on"
 
   # Set the boot order
   echo "Setting the boot order for VM '${vm_id}'..."
-  run_cmd "sudo qm set \"${vm_id}\" --boot order=virtio0"
+  run_command sudo qm set "${vm_id}" --boot order=virtio0
 
   # Set the cloud-init drive
   echo "Setting the cloud-init drive for VM '${vm_id}'..."
-  run_cmd "sudo qm set \"${vm_id}\" --ide2 \"${storage_vm}:cloudinit\""
+  run_command sudo qm set "${vm_id}" --ide2 "${storage_vm}:cloudinit"
 
   # Copy the cloud-init configuration to the snippets directory (overwrite if exists)
   local snippet_src_path="./cloud-config/${snippet}"
   echo "Copying the cloud-init configuration '${snippet_src_path}' to '${snippets_dir}/${snippet}'..."
-  run_cmd "sudo cp -f \"${snippet_src_path}\" \"${snippets_dir}/${snippet}\""
+  run_command sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
 
   # Replace variables in the cloud-init configuration
   echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
-  run_cmd "sudo sed -i \"s|{{USER}}|${user}|g\" \"${snippets_dir}/${snippet}\""
-  run_cmd "sudo sed -i \"s|{{ZFS_POOL_DOCKER_NAME}}|${zfs_pool_docker_name}|g\" \"${snippets_dir}/${snippet}\""
-  run_cmd "sudo sed -i \"s|{{ZFS_POOL_DOCKER_DISK}}|${zfs_pool_docker_disk}|g\" \"${snippets_dir}/${snippet}\""
-  run_cmd "sudo sed -i \"s|{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}|${docker_var_lib_zfs_dataset_name}|g\" \"${snippets_dir}/${snippet}\""
-  run_cmd "sudo sed -i \"s|{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}|${docker_storage_driver_zfs_dataset_name}|g\" \"${snippets_dir}/${snippet}\""
-  run_cmd "sudo sed -i \"s|{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}|${docker_volume_plugin_zfs_dataset_name}|g\" \"${snippets_dir}/${snippet}\""
+  run_command sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
+  run_command sudo sed -i "s|{{ZFS_POOL_DOCKER_NAME}}|${zfs_pool_docker_name}|g" "${snippets_dir}/${snippet}"
+  run_command sudo sed -i "s|{{ZFS_POOL_DOCKER_DISK}}|${zfs_pool_docker_disk}|g" "${snippets_dir}/${snippet}"
+  run_command sudo sed -i "s|{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}|${docker_var_lib_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+  run_command sudo sed -i "s|{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}|${docker_storage_driver_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+  run_command sudo sed -i "s|{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}|${docker_volume_plugin_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
 
   # TODO Setup portainer agent
   # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
@@ -305,17 +304,17 @@ main() {
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
-  run_cmd "sudo qm set \"${vm_id}\" --cicustom \"vendor=${storage_id}:snippets/${snippet}\""
-  run_cmd "sudo qm set \"${vm_id}\" --tags \"${tags}\""
-  run_cmd "sudo qm set \"${vm_id}\" --ciuser \"${user}\""
-  run_cmd "sudo qm set \"${vm_id}\" --cipassword \"${cipassword}\""
-  run_cmd "sudo qm set \"${vm_id}\" --sshkeys \"${ssh_keys}\""
-  run_cmd "sudo qm set \"${vm_id}\" --ipconfig0 \"${ipconfig0}\""
+  run_command sudo qm set "${vm_id}" --cicustom "vendor=${storage_id}:snippets/${snippet}"
+  run_command sudo qm set "${vm_id}" --tags "${tags}"
+  run_command sudo qm set "${vm_id}" --ciuser "${user}"
+  run_command sudo qm set "${vm_id}" --cipassword "${cipassword}"
+  run_command sudo qm set "${vm_id}" --sshkeys "${ssh_keys}"
+  run_command sudo qm set "${vm_id}" --ipconfig0 "${ipconfig0}"
 
   echo "VM creation and configuration completed successfully."
 
   # Convert the VM to a template
-  run_cmd "sudo qm template \"${vm_id}\""
+  run_command sudo qm template "${vm_id}"
   echo "VM '${vm_id}' converted to a template."
 }
 
