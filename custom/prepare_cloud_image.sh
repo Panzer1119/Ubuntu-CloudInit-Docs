@@ -353,6 +353,7 @@ main() {
   custom_img_name="$(basename "${img_path%.*}${custom_suffix}.${img_path##*.}")"
   custom_img_path="${storage_path}/${custom_img_name}"
   # If the command fails, delete the temporary image and exit
+  #FIXME this command has problems with run_command
   if ! run_command virt-customize -a "${temp_img}" \
     --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
