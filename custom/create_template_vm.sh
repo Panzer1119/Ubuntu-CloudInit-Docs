@@ -39,62 +39,33 @@ derive_storage_mountpoint() {
     local storage_id="${1}"
     local iso_dir="${2}"
     local snippets_dir="${3}"
-    local volume_id=""
+    local storage_info=""
     local mountpoint=""
 
-    # If storage is empty, ignore this and skip it gracefully
-    if [ -z "${storage_id}" ]; then
-        echo ""
-        exit 0
-    fi
-
-    # If both iso and snippets directories are specified, ignore this and skip it gracefully
-    if [ -n "${iso_dir}" ] && [ -n "${snippets_dir}" ]; then
-        echo ""
-        exit 0
-    fi
-
-    # Check if the storage supports content types 'iso' and 'snippets'
-    local content_types=('iso' 'snippets')
-    for content_type in "${content_types[@]}"; do
-        if ! pvesm status --enabled --storage "${storage_id}" --content "${content_type}" &>/dev/null; then
-            # If content type is not enabled, but the corresponding directory is specified, continue without an error
-            if [ "${content_type}" == 'iso' ] && [ -n "${iso_dir}" ]; then
-                continue
-            fi
-            if [ "${content_type}" == 'snippets' ] && [ -n "${snippets_dir}" ]; then
-                continue
-            fi
-            echo "Error: Storage '${storage_id}' must be enabled for content type '${content_type}'."
-            exit 1
-        fi
-    done
-
-    # List all iso and snippets content (cut the first line with the header)
-    local content_iso=$(pvesm list "${storage_id}" --content 'iso' | tail -n +2)
-    local content_snippets=$(pvesm list "${storage_id}" --content 'snippets' | tail -n +2)
-
-    # Check if no iso or snippets content is available
-    if [ -z "${content_iso}" ] || [ -z "${content_snippets}" ]; then
-        echo "Error: Storage '${storage_id}' must have at least one ISO and one snippets content to derive the mount point."
+    # Get storage info from Proxmox API and store it in a variable
+    if ! storage_info=$(sudo pvesh get /storage/${storage_id} --output-format json); then
+        echo "Error: Storage '${storage_id}' does not exist."
         exit 1
     fi
 
-    # If iso content is available, get the volume id of the first ISO
-    if [ -n "${content_iso}" ]; then
-        volume_id=$(echo "${content_iso}" | head -n 1 | awk '{print $1}')
-    else
-        volume_id=$(echo "${content_snippets}" | head -n 1 | awk '{print $1}')
+    # If iso_dir is not specified, check if storage supports content type 'iso'
+    if [ -z "${iso_dir}" ]; then
+        if ! echo "${storage_info}" | jq -e '.content|index("iso")' &>/dev/null; then
+            echo "Error: Storage '${storage_id}' must be enabled for content type 'iso'."
+            exit 1
+        fi
     fi
 
-    # Get the path of the volume
-    mountpoint=$(pvesm path "${volume_id}")
+    # If snippets_dir is not specified, check if storage supports content type 'snippets'
+    if [ -z "${snippets_dir}" ]; then
+        if ! echo "${storage_info}" | jq -e '.content|index("snippets")' &>/dev/null; then
+            echo "Error: Storage '${storage_id}' must be enabled for content type 'snippets'."
+            exit 1
+        fi
+    fi
 
-    # Cut the last part of the path (volume id)
-    mountpoint=$(dirname "${mountpoint}")
-
-    # Cut the last part of the path (content type)
-    mountpoint=$(dirname "${mountpoint}")
+    # Get the mountpoint
+    mountpoint=$(echo "${storage_info}" | jq -r '.path')
 
     # Check if mountpoint exists
     if [ ! -d "${mountpoint}" ]; then
@@ -108,8 +79,7 @@ derive_storage_mountpoint() {
 
 # Function to derive iso directory based on Proxmox storage
 derive_iso_dir() {
-    local storage_id="${1}"
-    local mountpoint="${2}"
+    local mountpoint="${1}"
     local iso_dir=""
 
     # Derive ISO directory
@@ -127,8 +97,7 @@ derive_iso_dir() {
 
 # Function to derive snippets directory based on Proxmox storage
 derive_snippets_dir() {
-    local storage_id="${1}"
-    local mountpoint="${2}"
+    local mountpoint="${1}"
     local snippets_dir=""
 
     # Derive snippets directory
@@ -208,17 +177,19 @@ main() {
     exit 1
   fi
 
-  # Derive storage mountpoint
-  storage_mountpoint=$(derive_storage_mountpoint "${storage_id}" "${iso_dir}" "${snippets_dir}")
+  # Derive storage mountpoint if iso_dir or snippets_dir is not specified
+  if [ -z "${iso_dir}" ] || [ -z "${snippets_dir}" ]; then
+    storage_mountpoint=$(derive_storage_mountpoint "${storage_id}" "${iso_dir}" "${snippets_dir}")
+  fi
 
   # Derive image directory if not specified
   if [ -z "${iso_dir}" ]; then
-    iso_dir=$(derive_iso_dir "${storage_id}" "${storage_mountpoint}")
+    iso_dir=$(derive_iso_dir "${storage_mountpoint}")
   fi
 
   # Derive snippets directory if not specified
   if [ -z "${snippets_dir}" ]; then
-    snippets_dir=$(derive_snippets_dir "${storage_id}" "${storage_mountpoint}")
+    snippets_dir=$(derive_snippets_dir "${storage_mountpoint}")
   fi
 
   # Check if the cloud image exists locally
