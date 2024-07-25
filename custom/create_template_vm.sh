@@ -273,19 +273,21 @@ main() {
   echo "Setting the cloud-init drive for VM '${vm_id}'..."
   sudo qm set "${vm_id}" --ide2 "${vm_storage}:cloudinit"
 
-  # Copy the cloud-init configuration to the snippets directory (overwrite if exists)
-  local snippet_src_path="./cloud-config/${snippet}"
-  echo "Copying the cloud-init configuration '${snippet_src_path}' to '${snippets_dir}/${snippet}'..."
-  sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
+  if [ -n "${snippet}" ] && [ "${snippet}" != "false" ]; then
+    # Copy the cloud-init configuration to the snippets directory (overwrite if exists)
+    local snippet_src_path="./cloud-config/${snippet}"
+    echo "Copying the cloud-init configuration '${snippet_src_path}' to '${snippets_dir}/${snippet}'..."
+    sudo cp -f "${snippet_src_path}" "${snippets_dir}/${snippet}"
 
-  # Replace variables in the cloud-init configuration
-  echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
-  sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{ZFS_POOL_DOCKER_NAME}}|${zfs_pool_docker_name}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{ZFS_POOL_DOCKER_DISK}}|${zfs_pool_docker_disk}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}|${docker_var_lib_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}|${docker_storage_driver_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
-  sudo sed -i "s|{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}|${docker_volume_plugin_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+    # Replace variables in the cloud-init configuration
+    echo "Replacing variables in the cloud-init configuration '${snippets_dir}/${snippet}'..."
+    sudo sed -i "s|{{USER}}|${user}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{ZFS_POOL_DOCKER_NAME}}|${zfs_pool_docker_name}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{ZFS_POOL_DOCKER_DISK}}|${zfs_pool_docker_disk}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{DOCKER_VAR_LIB_ZFS_DATASET_NAME}}|${docker_var_lib_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME}}|${docker_storage_driver_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+    sudo sed -i "s|{{DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME}}|${docker_volume_plugin_zfs_dataset_name}|g" "${snippets_dir}/${snippet}"
+  fi
 
   # TODO Setup portainer agent
   # TODO Setup watchtower (but only for notifications? or simply exclude those that are mission critical?)
