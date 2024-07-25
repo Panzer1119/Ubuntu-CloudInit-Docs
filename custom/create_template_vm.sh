@@ -263,6 +263,7 @@ main() {
 
   # Attach the cloud image
   echo "Attaching the cloud image '${cloud_image_name}' to VM '${vm_id}' as disk 1..."
+  #TODO What is with SSD Emulation?
   sudo qm set "${vm_id}" --scsihw "virtio-scsi-pci" --virtio0 "${vm_storage}:vm-${vm_id}-disk-1,discard=on"
 
   # Set the boot order
