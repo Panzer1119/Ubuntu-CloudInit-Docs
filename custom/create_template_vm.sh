@@ -19,7 +19,7 @@ usage() {
   echo "  -L, --docker-var-lib-zfs-dataset-name        DOCKER_VAR_LIB_ZFS_DATASET_NAME        Name for the docker var lib ZFS dataset (default: state)"
   echo "  -S, --docker-storage-driver-zfs-dataset-name DOCKER_STORAGE_DRIVER_ZFS_DATASET_NAME Name for the docker storage driver ZFS dataset (default: layers)"
   echo "  -V, --docker-volume-plugin-zfs-dataset-name  DOCKER_VOLUME_PLUGIN_ZFS_DATASET_NAME  Name for the docker volume plugin ZFS dataset  (default: volumes)"
-  echo "  -C, --cloud-image CLOUD_IMAGE   Cloud image file (required)"
+  echo "  -C, --cloud-image-name CLOUD_IMAGE_NAME Cloud image file name located in the iso directory (required)"
   echo "  -p, --cipassword CIPASSWORD     Cloud-init password (default: password)"
   echo "  -I, --ipconfig0 IPCONFIG0       IP configuration (default: ip=dhcp)"
   echo "                                  Example for static IPv4 with gateway: ip=192.168.1.100/24,gw=192.168.1.1"
@@ -30,7 +30,7 @@ usage() {
   echo
   echo "Required Options:"
   echo "  -v, --vm-id VM_ID"
-  echo "  -C, --cloud-image CLOUD_IMAGE"
+  echo "  -C, --cloud-image-name CLOUD_IMAGE"
   exit 1
 }
 
@@ -155,7 +155,7 @@ main() {
   local docker_var_lib_zfs_dataset_name="state"
   local docker_storage_driver_zfs_dataset_name="layers"
   local docker_volume_plugin_zfs_dataset_name="volumes"
-  local cloud_image=""
+  local cloud_image_name=""
   local cipassword="password"
   local ipconfig0="ip=dhcp"
   local tags="cloudinit,docker,zfs"
@@ -189,7 +189,7 @@ main() {
           docker-var-lib-zfs-dataset-name) docker_var_lib_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           docker-storage-driver-zfs-dataset-name) docker_storage_driver_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           docker-volume-plugin-zfs-dataset-name) docker_volume_plugin_zfs_dataset_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
-          cloud-image) cloud_image="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          cloud-image-name) cloud_image_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           cipassword) cipassword="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           ipconfig0) ipconfig0="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           tags) tags="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
@@ -213,7 +213,7 @@ main() {
       L) docker_var_lib_zfs_dataset_name="${OPTARG}" ;;
       S) docker_storage_driver_zfs_dataset_name="${OPTARG}" ;;
       V) docker_volume_plugin_zfs_dataset_name="${OPTARG}" ;;
-      C) cloud_image="${OPTARG}" ;;
+      C) cloud_image_name="${OPTARG}" ;;
       p) cipassword="${OPTARG}" ;;
       I) ipconfig0="${OPTARG}" ;;
       T) tags="${OPTARG}" ;;
@@ -226,8 +226,8 @@ main() {
   done
 
   # Check for required options
-  if [ -z "${vm_id}" ] || [ -z "${cloud_image}" ]; then
-    echo "Error: VM ID (-v, --vm-id) and Cloud image (-C, --cloud-image) are required."
+  if [ -z "${vm_id}" ] || [ -z "${cloud_image_name}" ]; then
+    echo "Error: VM ID (-v, --vm-id) and Cloud image (-C, --cloud-image-name) are required."
     exit 1
   fi
 
@@ -247,9 +247,9 @@ main() {
   fi
 
   # Check if the cloud image exists locally
-  local cloud_image_path="${iso_dir}/${cloud_image}"
+  local cloud_image_path="${iso_dir}/${cloud_image_name}"
   if [ ! -f "${cloud_image_path}" ]; then
-    echo "Error: Cloud image '${cloud_image}' not found at '${cloud_image_path}'. Exiting."
+    echo "Error: Cloud image '${cloud_image_name}' not found at '${cloud_image_path}'. Exiting."
     exit 1
   fi
 
@@ -265,11 +265,11 @@ main() {
   run_command sudo qm create "${vm_id}" --name "${vm_name}" --ostype l26 --memory 1024 --balloon 0 --agent 1 --bios ovmf --machine q35 --efidisk0 "${vm_storage}:0,pre-enrolled-keys=0" --cpu host --cores 1 --numa 1 --vga serial0 --serial0 socket --net0 virtio,bridge=vmbr0,mtu=1
 
   # Import the cloud image
-  echo "Importing the cloud image '${cloud_image}' to VM '${vm_id}' storage '${vm_storage}'..."
+  echo "Importing the cloud image '${cloud_image_name}' to VM '${vm_id}' storage '${vm_storage}'..."
   run_command sudo qm importdisk "${vm_id}" "${cloud_image_path}" "${vm_storage}"
 
   # Attach the cloud image
-  echo "Attaching the cloud image '${cloud_image}' to VM '${vm_id}' as disk 1..."
+  echo "Attaching the cloud image '${cloud_image_name}' to VM '${vm_id}' as disk 1..."
   run_command sudo qm set "${vm_id}" --scsihw virtio-scsi-pci --virtio0 "${vm_storage}:vm-${vm_id}-disk-1,discard=on"
 
   # Set the boot order
