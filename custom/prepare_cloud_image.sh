@@ -355,7 +355,7 @@ main() {
   # If the command fails, delete the temporary image and exit
   #FIXME this command has problems with run_command
   if ! run_command virt-customize -a "${temp_img}" \
-    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper \
+    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,ranger \
     --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
     --run-command "sh get-docker.sh" \
     --run-command 'curl -s https://repos.influxdata.com/influxdata-archive.key > /tmp/influxdata-archive.key' \
