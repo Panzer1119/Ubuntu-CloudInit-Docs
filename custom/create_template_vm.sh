@@ -304,7 +304,9 @@ main() {
 
   # Set the VM options
   echo "Setting the VM options for VM '${vm_id}'..."
-  run_command sudo qm set "${vm_id}" --cicustom "vendor=${storage_id}:snippets/${snippet}"
+  if [ -n "${snippet}" ] && [ "${snippet}" != "false" ]; then
+    run_command sudo qm set "${vm_id}" --cicustom "vendor=${storage_id}:snippets/${snippet}"
+  fi
   run_command sudo qm set "${vm_id}" --tags "${tags}"
   run_command sudo qm set "${vm_id}" --ciuser "${user}"
   run_command sudo qm set "${vm_id}" --cipassword "${cipassword}"
