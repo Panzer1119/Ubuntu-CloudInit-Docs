@@ -9,7 +9,7 @@ usage() {
   echo "  -N, --vm-name VM_NAME           VM name (default: docker-zfs-template-vm)"
   echo "  -u, --user USER                 User name (default: panzer1119)"
   echo "  -s, --vm-storage VM_STORAGE_ID  Storage ID for VM (default: storage-vm)"
-  echo "  -k, --ssh-keys SSH_KEYS         SSH keys path or string (default: /home/\$USER/.ssh/authorized_keys)"
+  echo "  -k, --ssh-keys SSH_KEYS         SSH keys path (default: /home/\$USER/.ssh/authorized_keys)"
   echo "  -t, --storage STORAGE_ID        Storage ID for ISOs and Snippets (default: tn-core-1)"
   echo "  -i, --iso-dir ISO_DIR           ISO directory path (default: derived from STORAGE)"
   echo "  -e, --snippets-dir SNIPPETS_DIR Snippets directory path (default: derived from STORAGE)"
