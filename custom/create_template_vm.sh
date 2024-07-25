@@ -8,7 +8,7 @@ usage() {
   echo "  -v, --vm-id VM_ID               VM ID (required)"
   echo "  -N, --vm-name VM_NAME           VM name (default: docker-zfs-template-vm)"
   echo "  -u, --user USER                 User name (default: panzer1119)"
-  echo "  -s, --storage-vm VM_STORAGE_ID  Storage ID for VM (default: storage-vm)"
+  echo "  -s, --vm-storage VM_STORAGE_ID  Storage ID for VM (default: storage-vm)"
   echo "  -k, --ssh-keys SSH_KEYS         SSH keys path or string (default: /home/\$USER/.ssh/authorized_keys)"
   echo "  -t, --storage STORAGE_ID        Storage ID for ISOs and Snippets (default: tn-core-1)"
   echo "  -i, --iso-dir ISO_DIR           ISO directory path (default: derived from STORAGE)"
@@ -143,7 +143,7 @@ main() {
   local vm_id=""
   local vm_name="docker-zfs-template-vm"
   local user="panzer1119"
-  local storage_vm="storage-vm"
+  local vm_storage="storage-vm"
   local ssh_keys="/home/${user}/.ssh/authorized_keys"
   local storage_id="tn-core-1"
   local storage_mountpoint=""
@@ -178,7 +178,7 @@ main() {
           vm-id) vm_id="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           vm-name) vm_name="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           user) user="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
-          storage-vm) storage_vm="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+          vm-storage) vm_storage="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           ssh-keys) ssh_keys="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           storage) storage_id="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
           iso-dir) iso_dir="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
@@ -202,7 +202,7 @@ main() {
       v) vm_id="${OPTARG}" ;;
       N) vm_name="${OPTARG}" ;;
       u) user="${OPTARG}" ;;
-      s) storage_vm="${OPTARG}" ;;
+      s) vm_storage="${OPTARG}" ;;
       k) ssh_keys="${OPTARG}" ;;
       t) storage_id="${OPTARG}" ;;
       i) iso_dir="${OPTARG}" ;;
@@ -262,15 +262,15 @@ main() {
 
   # Create the VM
   echo "Creating VM '${vm_id}' with name '${vm_name}'..."
-  run_command sudo qm create "${vm_id}" --name "${vm_name}" --ostype l26 --memory 1024 --balloon 0 --agent 1 --bios ovmf --machine q35 --efidisk0 "${storage_vm}:0,pre-enrolled-keys=0" --cpu host --cores 1 --numa 1 --vga serial0 --serial0 socket --net0 virtio,bridge=vmbr0,mtu=1
+  run_command sudo qm create "${vm_id}" --name "${vm_name}" --ostype l26 --memory 1024 --balloon 0 --agent 1 --bios ovmf --machine q35 --efidisk0 "${vm_storage}:0,pre-enrolled-keys=0" --cpu host --cores 1 --numa 1 --vga serial0 --serial0 socket --net0 virtio,bridge=vmbr0,mtu=1
 
   # Import the cloud image
-  echo "Importing the cloud image '${cloud_image}' to VM '${vm_id}' storage '${storage_vm}'..."
-  run_command sudo qm importdisk "${vm_id}" "${cloud_image_path}" "${storage_vm}"
+  echo "Importing the cloud image '${cloud_image}' to VM '${vm_id}' storage '${vm_storage}'..."
+  run_command sudo qm importdisk "${vm_id}" "${cloud_image_path}" "${vm_storage}"
 
   # Attach the cloud image
   echo "Attaching the cloud image '${cloud_image}' to VM '${vm_id}' as disk 1..."
-  run_command sudo qm set "${vm_id}" --scsihw virtio-scsi-pci --virtio0 "${storage_vm}:vm-${vm_id}-disk-1,discard=on"
+  run_command sudo qm set "${vm_id}" --scsihw virtio-scsi-pci --virtio0 "${vm_storage}:vm-${vm_id}-disk-1,discard=on"
 
   # Set the boot order
   echo "Setting the boot order for VM '${vm_id}'..."
@@ -278,7 +278,7 @@ main() {
 
   # Set the cloud-init drive
   echo "Setting the cloud-init drive for VM '${vm_id}'..."
-  run_command sudo qm set "${vm_id}" --ide2 "${storage_vm}:cloudinit"
+  run_command sudo qm set "${vm_id}" --ide2 "${vm_storage}:cloudinit"
 
   # Copy the cloud-init configuration to the snippets directory (overwrite if exists)
   local snippet_src_path="./cloud-config/${snippet}"
