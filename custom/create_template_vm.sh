@@ -252,7 +252,7 @@ main() {
   sudo qm create "${vm_id}" --name "${vm_name}" --ostype "l26" \
     --memory "1024" --balloon "0" \
     --agent "1" \
-    --bios "ovmf" --machine "q35" --efidisk0 "${vm_storage}:0,pre-enrolled-keys=0" \
+    --bios "ovmf" --machine "q35" --efidisk0 "${vm_storage}:0,efitype=4m,pre-enrolled-keys=0" \
     --cpu "host" --cores "1" --numa "1" \
     --vga "serial0" --serial0 "socket" \
     --net0 "virtio,bridge=vmbr0,mtu=1"
