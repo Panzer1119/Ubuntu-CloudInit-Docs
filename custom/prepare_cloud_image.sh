@@ -339,21 +339,7 @@ main() {
   custom_img_path="${storage_path}/${custom_img_name}"
   # If the command fails, delete the temporary image and exit
   #FIXME this command has problems with run_command
-  if ! virt-customize -a "${temp_img}" \
-    --install qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,yq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,ranger \
-    --run-command "curl -fsSL https://get.docker.com -o get-docker.sh" \
-    --run-command "sh get-docker.sh" \
-    --run-command 'curl -s https://repos.influxdata.com/influxdata-archive.key > /tmp/influxdata-archive.key' \
-    --run-command 'echo "943666881a1b8d9b849b74caebf02d3465d6beb716510d86a39f6c8e8dac7515 /tmp/influxdata-archive.key" | sha256sum -c' \
-    --run-command 'cat /tmp/influxdata-archive.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/influxdata-archive.gpg > /dev/null' \
-    --run-command 'echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main" | tee /etc/apt/sources.list.d/influxdata.list' \
-    --run-command 'apt-get update && apt-get install -y telegraf' \
-    --copy-in "telegraf.conf:/etc/telegraf/telegraf.conf" \
-    --run-command "echo 'INFLUX_URL=${influx_url}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_ORG=${influx_org}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_BUCKET=${influx_bucket}' >> /etc/environment" \
-    --run-command "echo 'INFLUX_TOKEN=${influx_token}' >> /etc/environment" \
-    --run-command "echo -n > /etc/machine-id"; then
+  if ! virt-customize -a "${temp_img}" --install "qemu-guest-agent,magic-wormhole,zfsutils-linux,ca-certificates,curl,jq,yq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,ranger"; then
     echo "Error: Failed to customize the image."
     rm -f "${temp_img}"
     exit 1
