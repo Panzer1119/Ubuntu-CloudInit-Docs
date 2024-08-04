@@ -339,9 +339,7 @@ main() {
   custom_img_path="${storage_path}/${custom_img_name}"
   # If the command fails, delete the temporary image and exit
   #FIXME this command has problems with run_command
-  if ! virt-customize -a "${temp_img}" \
-    --install "qemu-guest-agent,magic-wormhole,curl,jq,yq,eza,ncdu,rclone,cifs-utils,tree,etckeeper,ranger" \
-    --run-command "echo -n > /etc/machine-id"; then
+  if ! virt-customize -a "${temp_img}" --install "qemu-guest-agent" --run-command "echo -n > /etc/machine-id"; then
     echo "Error: Failed to customize the image."
     rm -f "${temp_img}"
     exit 1
